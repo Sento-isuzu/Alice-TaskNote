@@ -1,3 +1,29 @@
+@import 'tailwindcss';
+
+html,
+body,
+#app {
+    width: 100%;
+    height: 100%;
+}
+
+.el-header {
+    /* 强制移除 Element Plus 默认的 padding */
+    padding: 0 !important;
+    /* 确保宽度占满父容器 */
+    width: 100% !important;
+}
+
+/* 修复Tailwind和Element Plus的滚动条冲突 */
+html {
+    overflow-y: auto !important;
+}
+
+.el-container {
+    width: 100%;
+    height: 100%;
+}
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -24,8 +50,6 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
 }
@@ -56,13 +80,6 @@ button:focus-visible {
 
 .card {
   padding: 2em;
-}
-
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
 }
 
 @media (prefers-color-scheme: light) {
