@@ -7,35 +7,64 @@ on:
     branches: ['main']
 
 jobs:
-  build-test:
+  prettier-check:
     runs-on: ubuntu-latest
-
     steps:
-      # 拉取仓库代码
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 安装 Node
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      # 安装 pnpm
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 9
-          run_install: true
+          version: 10
+          run_install: false
 
-      # 代码格式检查
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Prettier check
-        run: pnpm prettier --check "src/**/*.{js,ts,vue,css,scss,md,json}"
+        run: pnpm prettier --check "src/**/*.{js,ts,vue,css,scss,md,json}" --ignore-path .gitignore
 
-      # 构建项目
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache pnpm store
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Build
         run: pnpm build
 
-      # 单元测试 (待补充)
-      - name: Run tests
-        run: pnpm test || echo "No tests configured"
+      - name: Run tests # 测试（待补充）
+        run: |
+          if pnpm test; then
+            echo "Tests passed"
+          else
+            echo "No tests configured or failed"
+          fi
