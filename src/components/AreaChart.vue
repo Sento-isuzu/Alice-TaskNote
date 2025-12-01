@@ -50,7 +50,7 @@ const updateChart = () => {
     return;
   }
 
-  // 获取 CSS 变量颜色值
+  // 获取 CSS 变量颜色值 - 使用与BarChart相同的颜色定义
   const chartPrimary = getCssVariable('--chart-primary') || '#597eb7';
   const chartSecondary = getCssVariable('--chart-secondary') || '#7bb3d6';
   const chartAccent = getCssVariable('--chart-accent') || '#eed75e';
@@ -60,10 +60,17 @@ const updateChart = () => {
   const aliceBorder = getCssVariable('--alice-border') || 'rgba(0, 0, 0, 0.08)';
   const chartGrid = getCssVariable('--chart-grid') || 'rgba(0, 0, 0, 0.08)';
 
+  // 创建颜色对象，确保与BarChart一致
+  const colors = {
+    completed: chartPrimary,
+    inProgress: chartSecondary,
+    remaining: chartAccent,
+  };
+
   // 创建半透明版本的颜色
-  const chartPrimaryFade = hexToRgba(chartPrimary, 0.3);
-  const chartSecondaryFade = hexToRgba(chartSecondary, 0.3);
-  const chartAccentFade = hexToRgba(chartAccent, 0.3);
+  const chartPrimaryFade = hexToRgba(colors.completed, 0.3);
+  const chartSecondaryFade = hexToRgba(colors.inProgress, 0.3);
+  const chartAccentFade = hexToRgba(colors.remaining, 0.3);
 
   // 创建图表
   chartInstance.value = new Chart(ctx, {
@@ -79,12 +86,12 @@ const updateChart = () => {
             above: chartPrimaryFade,
           },
           backgroundColor: chartPrimaryFade,
-          borderColor: chartPrimary,
+          borderColor: colors.completed, // 使用统一的颜色
           tension: 0.4,
-          pointBackgroundColor: chartPrimary,
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-          pointRadius: 4,
+          // 移除点的显示
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          pointHitRadius: 0,
         },
         {
           label: '进行中',
@@ -94,12 +101,12 @@ const updateChart = () => {
             above: chartSecondaryFade,
           },
           backgroundColor: chartSecondaryFade,
-          borderColor: chartSecondary,
+          borderColor: colors.inProgress, // 使用统一的颜色
           tension: 0.4,
-          pointBackgroundColor: chartSecondary,
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-          pointRadius: 4,
+          // 移除点的显示
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          pointHitRadius: 0,
         },
         {
           label: '待完成',
@@ -109,12 +116,12 @@ const updateChart = () => {
             above: chartAccentFade,
           },
           backgroundColor: chartAccentFade,
-          borderColor: chartAccent,
+          borderColor: colors.remaining, // 使用统一的颜色
           tension: 0.4,
-          pointBackgroundColor: chartAccent,
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-          pointRadius: 4,
+          // 移除点的显示
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          pointHitRadius: 0,
         },
       ],
     },
@@ -126,8 +133,13 @@ const updateChart = () => {
           position: 'top',
           labels: {
             usePointStyle: true,
-            padding: 20,
+            padding: 15,
             color: aliceText,
+            font: {
+              family: 'inherit',
+            },
+            boxWidth: 12,
+            boxHeight: 12,
           },
         },
         tooltip: {
@@ -138,6 +150,12 @@ const updateChart = () => {
           bodyColor: aliceText,
           borderColor: aliceBorder,
           borderWidth: 1,
+          titleFont: {
+            family: 'inherit',
+          },
+          bodyFont: {
+            family: 'inherit',
+          },
         },
       },
       scales: {
@@ -147,6 +165,9 @@ const updateChart = () => {
           },
           ticks: {
             color: aliceTextMuted,
+            font: {
+              family: 'inherit',
+            },
           },
         },
         y: {
@@ -157,6 +178,9 @@ const updateChart = () => {
           ticks: {
             precision: 0,
             color: aliceTextMuted,
+            font: {
+              family: 'inherit',
+            },
           },
         },
       },

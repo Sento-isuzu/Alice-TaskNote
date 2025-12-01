@@ -31,8 +31,12 @@ const options = {
   rotation: -90,
   cutout: '70%',
   plugins: {
-    tooltip: { enabled: false },
-    legend: { display: false },
+    tooltip: {
+      enabled: false,
+    },
+    legend: {
+      display: false,
+    },
   },
   animation: {
     animateRotate: true,

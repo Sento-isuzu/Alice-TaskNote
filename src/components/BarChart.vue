@@ -32,7 +32,7 @@ const updateChart = () => {
     chartInstance.value.destroy();
   }
 
-  // 获取 CSS 变量颜色值
+  // 获取 CSS 变量颜色值 - 使用与AreaChart相同的颜色定义
   const chartPrimary = getCssVariable('--chart-primary') || '#597eb7';
   const chartSecondary = getCssVariable('--chart-secondary') || '#7bb3d6';
   const chartAccent = getCssVariable('--chart-accent') || '#eed75e';
@@ -42,6 +42,7 @@ const updateChart = () => {
   const aliceBorder = getCssVariable('--alice-border') || 'rgba(0, 0, 0, 0.08)';
   const chartGrid = getCssVariable('--chart-grid') || 'rgba(0, 0, 0, 0.08)';
 
+  // 创建颜色对象，确保与AreaChart一致
   const colors = {
     completed: chartPrimary,
     inProgress: chartSecondary,
@@ -58,6 +59,11 @@ const updateChart = () => {
           usePointStyle: true,
           padding: 15,
           color: aliceText,
+          font: {
+            family: 'inherit',
+          },
+          boxWidth: 12,
+          boxHeight: 12,
         },
       },
       tooltip: {
@@ -68,6 +74,12 @@ const updateChart = () => {
         bodyColor: aliceText,
         borderColor: aliceBorder,
         borderWidth: 1,
+        titleFont: {
+          family: 'inherit',
+        },
+        bodyFont: {
+          family: 'inherit',
+        },
       },
     },
     scales: {
@@ -77,6 +89,9 @@ const updateChart = () => {
         },
         ticks: {
           color: aliceTextMuted,
+          font: {
+            family: 'inherit',
+          },
         },
       },
       y: {
@@ -87,6 +102,9 @@ const updateChart = () => {
         ticks: {
           precision: 0,
           color: aliceTextMuted,
+          font: {
+            family: 'inherit',
+          },
         },
       },
     },
@@ -117,22 +135,22 @@ const updateChart = () => {
         {
           label: '已完成',
           data: completed,
-          backgroundColor: colors.completed,
-          borderColor: colors.completed,
+          backgroundColor: colors.completed, // 使用统一的颜色
+          borderColor: colors.completed, // 使用统一的颜色
           borderWidth: 1,
         },
         {
           label: '进行中',
           data: inProgress,
-          backgroundColor: colors.inProgress,
-          borderColor: colors.inProgress,
+          backgroundColor: colors.inProgress, // 使用统一的颜色
+          borderColor: colors.inProgress, // 使用统一的颜色
           borderWidth: 1,
         },
         {
           label: '待完成',
           data: remaining,
-          backgroundColor: colors.remaining,
-          borderColor: colors.remaining,
+          backgroundColor: colors.remaining, // 使用统一的颜色
+          borderColor: colors.remaining, // 使用统一的颜色
           borderWidth: 1,
         },
       ],
