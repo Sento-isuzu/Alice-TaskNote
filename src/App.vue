@@ -1,25 +1,23 @@
 <template>
   <!-- TODO:App.vue只负责全局包裹，把layout单独创建文件抽离出来 -->
-  <!--<template>
+  <!--比如<template>
             <router-view />
         </template> -->
-  <!-- TODO:配置printter -->
-  <el-container class="h-screen w-screen">
-    <el-header class="p-0 h-auto">
+  <div class="h-screen w-screen flex flex-col">
+    <div>
       <HeaderBar />
-    </el-header>
+    </div>
 
-    <el-container class="overflow-hidden">
-      <el-aside width="230px">
+    <div class="flex flex-1 overflow-hidden">
+      <aside class="w-[230px] shrink-0 h-full overflow-y-auto bg-white">
         <Sidebar />
-      </el-aside>
+      </aside>
 
-      <!-- 主内容区域 -->
-      <el-main class="bg-gray-100 p-0 overflow-x-hidden">
+      <main class="flex-1 bg-gray-100 p-0 overflow-auto">
         <router-view />
-      </el-main>
-    </el-container>
-  </el-container>
+      </main>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">

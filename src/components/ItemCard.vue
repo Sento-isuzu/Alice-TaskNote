@@ -86,7 +86,6 @@
               <span class="flex items-center gap-2">
                 <el-icon><Flag /></el-icon> 优先级
               </span>
-              <el-icon><ArrowRight /></el-icon>
             </div>
 
             <template #dropdown>
@@ -139,6 +138,7 @@ import {
   ArrowRight,
   Operation,
   Top,
+  ArrowLeft,
 } from '@element-plus/icons-vue';
 
 const props = defineProps<{ item: Item }>();
