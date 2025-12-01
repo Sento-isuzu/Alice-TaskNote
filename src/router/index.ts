@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import TodoView from '@/views/TodoView.vue';
 import NoteView from '@/views/NoteView.vue';
 import Stats from '@/views/Stats.vue';
+import TagsView from '../views/TagsView.vue';
 const routes = [
   {
     path: '/',
@@ -26,7 +27,7 @@ const routes = [
   {
     path: '/tags',
     name: 'Tags',
-    component: () => import('@/views/PlaceholderView.vue'),
+    component: TagsView,
   },
 ];
 
