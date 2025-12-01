@@ -15,7 +15,7 @@
 
     <div class="flex-1 overflow-hidden cursor-pointer py-0.5" @click="handleContentClick">
       <p
-        class="break-words text-base font-medium text-gray-800 leading-snug"
+        class="wrap-break-word text-base font-medium text-gray-800 leading-snug"
         :class="{ 'line-through text-gray-400': item.type === 'task' && item.status === 'done' }"
       >
         {{ item.title }}
