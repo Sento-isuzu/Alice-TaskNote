@@ -1,13 +1,17 @@
 <template>
   <div
     class="group mb-3 flex items-center rounded-xl p-3 shadow-sm transition-all duration-200 hover:shadow-md"
-    :class="[cardBackgroundClass, { 'opacity-60': item.type === 'task' && item.status === 'done' }]"
+    :class="[
+      cardBackgroundClass,
+      { 'opacity-60': item.type === 'task' && item.status === 'done' },
+      item.isPinned ? 'border border-slate-300' : 'border border-transparent',
+    ]"
   >
     <div class="flex items-center justify-center mr-4">
       <el-checkbox
         v-if="item.type === 'task'"
         :model-value="item.status === 'done'"
-        @change="emit('toggle', item.id)"
+        @change="emit('togglePin', props.item.id)"
         size="large"
         :class="priorityClass"
       />
@@ -75,48 +79,104 @@
       </span>
       <template #dropdown>
         <el-dropdown-menu>
-          <el-dropdown-item command="edit"
-            ><el-icon><Edit /></el-icon> 编辑</el-dropdown-item
-          >
+          <template v-if="item.type === 'note'">
+            <el-dropdown-item command="togglePin">
+              <el-icon><Top /></el-icon>
+              {{ item.isPinned ? '取消置项' : '置项' }}
+            </el-dropdown-item>
 
-          <el-dropdown placement="left-start" trigger="hover" class="w-full">
-            <div
-              class="flex items-center justify-between w-full px-4 py-2 text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors"
-            >
-              <span class="flex items-center gap-2">
-                <el-icon><Flag /></el-icon> 优先级
+            <el-dropdown-item command="encrypt">
+              <el-icon><Lock /></el-icon>
+              加密
+            </el-dropdown-item>
+
+            <el-dropdown placement="left-start" trigger="hover" class="w-full">
+              <div
+                class="flex items-center justify-between w-full px-4 py-2 text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-blue-600"
+              >
+                <span class="flex items-center gap-2">
+                  <el-icon><Flag /></el-icon>
+                  优先级
+                </span>
+              </div>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click.stop="setPriority('high')">
+                    <el-icon><Flag /></el-icon> 高 (P1)
+                  </el-dropdown-item>
+                  <el-dropdown-item @click.stop="setPriority('medium')">
+                    <el-icon><Flag /></el-icon> 中 (P2)
+                  </el-dropdown-item>
+                  <el-dropdown-item @click.stop="setPriority('low')">
+                    <el-icon><Flag /></el-icon> 低 (P3)
+                  </el-dropdown-item>
+                  <el-dropdown-item @click.stop="setPriority('none')">
+                    <el-icon><Flag /></el-icon> 无
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+
+            <el-dropdown-item command="setTags">
+              <el-icon><PriceTag /></el-icon>
+              管理标签
+            </el-dropdown-item>
+
+            <el-dropdown-item divided command="delete">
+              <span class="text-red-500">
+                <el-icon><Delete /></el-icon>
+                删除
               </span>
-            </div>
+            </el-dropdown-item>
+          </template>
+          <template v-else>
+            <el-dropdown-item command="edit">
+              <el-icon><Edit /></el-icon> 编辑
+            </el-dropdown-item>
 
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click.stop="setPriority('high')">
-                  <el-icon class="text-red-500"><Flag /></el-icon> 高 (P1)
-                </el-dropdown-item>
-                <el-dropdown-item @click.stop="setPriority('medium')">
-                  <el-icon class="text-orange-500"><Flag /></el-icon> 中 (P2)
-                </el-dropdown-item>
-                <el-dropdown-item @click.stop="setPriority('low')">
-                  <el-icon class="text-blue-500"><Flag /></el-icon> 低 (P3)
-                </el-dropdown-item>
-                <el-dropdown-item @click.stop="setPriority('none')">
-                  <el-icon class="text-gray-400"><Flag /></el-icon> 无 (P4)
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+            <el-dropdown-item command="togglePin">
+              <el-icon><Top /></el-icon>
+              {{ item.isPinned ? '取消置顶' : '置顶' }}
+            </el-dropdown-item>
+            <el-dropdown placement="left-start" trigger="hover" class="w-full">
+              <div
+                class="flex items-center justify-between w-full px-4 py-2 text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors"
+              >
+                <span class="flex items-center gap-2">
+                  <el-icon><Flag /></el-icon> 优先级
+                </span>
+              </div>
 
-          <el-dropdown-item command="setDate"
-            ><el-icon><Calendar /></el-icon> 设置日期...</el-dropdown-item
-          >
-          <el-dropdown-item command="setTags"
-            ><el-icon><PriceTag /></el-icon> 管理标签...</el-dropdown-item
-          >
-          <el-dropdown-item divided command="delete">
-            <span class="text-red-500"
-              ><el-icon><Delete /></el-icon> 删除</span
-            >
-          </el-dropdown-item>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click.stop="setPriority('high')">
+                    <el-icon class="text-red-500"><Flag /></el-icon> 高 (P1)
+                  </el-dropdown-item>
+                  <el-dropdown-item @click.stop="setPriority('medium')">
+                    <el-icon class="text-orange-500"><Flag /></el-icon> 中 (P2)
+                  </el-dropdown-item>
+                  <el-dropdown-item @click.stop="setPriority('low')">
+                    <el-icon class="text-blue-500"><Flag /></el-icon> 低 (P3)
+                  </el-dropdown-item>
+                  <el-dropdown-item @click.stop="setPriority('none')">
+                    <el-icon class="text-gray-400"><Flag /></el-icon> 无 (P4)
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+
+            <el-dropdown-item command="setDate">
+              <el-icon><Calendar /></el-icon> 设置日期
+            </el-dropdown-item>
+            <el-dropdown-item command="setTags">
+              <el-icon><PriceTag /></el-icon> 管理标签
+            </el-dropdown-item>
+            <el-dropdown-item divided command="delete">
+              <span class="text-red-500">
+                <el-icon><Delete /></el-icon> 删除
+              </span>
+            </el-dropdown-item>
+          </template>
         </el-dropdown-menu>
       </template>
     </el-dropdown>
@@ -135,18 +195,17 @@ import {
   MoreFilled,
   Delete,
   Edit,
-  ArrowRight,
   Operation,
   Top,
-  ArrowLeft,
+  Lock,
 } from '@element-plus/icons-vue';
 
 const props = defineProps<{ item: Item }>();
 
 const emit = defineEmits<{
-  (e: 'toggle', id: number): void;
+  (e: 'togglePin', id: number): void;
   (e: 'delete', id: number): void; // 用于执行删除
-  (e: 'edit', item: Item): void; // 用于打开编辑/设置日期弹窗
+  (e: 'edit', item: Item): void; // 打开单独编辑/设置弹窗（如果需要）
   (e: 'view', id: number): void;
   (e: 'openDialog', command: 'edit' | 'setTags' | 'setDate', item: Item): void;
 }>();
@@ -156,72 +215,73 @@ const cleanContent = (content: string) => {
   return content.replace(/^[#*->\s]+|\[.*?\]\(.*?\)/g, '').split('\n')[0] || '';
 };
 
-// 点击内容区域，打开编辑弹窗
 const handleContentClick = () => emit('openDialog', 'edit', props.item);
 
-// 2. 完善 handleCommand 逻辑
+// checkbox change -> emit toggle
+const onToggleCheckbox = () => {
+  emit('togglePin', props.item.id);
+};
+
 const handleCommand = (command: string) => {
   switch (command) {
     case 'edit':
-    case 'setDate': // 设置日期也打开编辑弹窗，让用户修改 deadline
+      // 点下拉的 编辑 -> 告知父组件打开编辑器（与点击卡片同样行为）
+      emit('openDialog', 'edit', props.item);
+      break;
+    case 'togglePin':
+      // 点击置顶/取消置顶：直接更新数据
+      updateItem(props.item.id, { isPinned: !props.item.isPinned });
+      break;
+    case 'setDate':
       emit('openDialog', 'edit', props.item);
       break;
     case 'setTags':
-      emit('openDialog', 'setTags', props.item); // 打开标签管理弹窗
+      emit('openDialog', 'setTags', props.item);
       break;
     case 'delete':
-      // 弹出确认框
       ElMessageBox.confirm('确定要删除此项吗？', '警告', {
         confirmButtonText: '确定删除',
         cancelButtonText: '取消',
         type: 'warning',
       })
         .then(() => {
-          emit('delete', props.item.id); // 确认后触发删除事件
+          emit('delete', props.item.id);
         })
-        .catch(() => {
-          // 用户点击取消或关闭弹窗
-        });
+        .catch(() => {});
       break;
     default:
       break;
   }
 };
 
-// 设置优先级：逻辑保持不变，直接修改 item 属性
 const setPriority = (p: Priority) => {
-  // 假设 Priority 是定义的类型
   updateItem(props.item.id, { priority: p });
 };
 
-// 1. 卡片背景色逻辑
 const cardBackgroundClass = computed(() => {
   switch (props.item.priority) {
     case 'high':
-      return 'bg-red-50'; // 高优先级：浅红背景
+      return 'bg-red-50';
     case 'medium':
-      return 'bg-orange-50'; // 中优先级：浅橙背景
+      return 'bg-orange-50';
     case 'low':
-      return 'bg-blue-50'; // 低优先级：浅蓝背景
+      return 'bg-blue-50';
     default:
-      return 'bg-white hover:border-gray-300'; // 无优先级：白色背景
+      return 'bg-white hover:border-gray-300';
   }
 });
 
-// 2. 复选框边框颜色逻辑
 const priorityClass = computed(() => `priority-${props.item.priority || 'none'}`);
 
-// 3. 元数据行显示逻辑
 const shouldShowMeta = computed(() => {
   return (
-    props.item.isPinned || // 只要置顶就显示
+    props.item.isPinned ||
     props.item.deadline ||
     (props.item.tags && props.item.tags.length > 0) ||
     (props.item.subTasks && props.item.subTasks.length > 0)
   );
 });
 
-// 是否显示子任务前的分隔线
 const shouldShowDividerForSubtask = computed(() => {
   return (
     props.item.isPinned || props.item.deadline || (props.item.tags && props.item.tags.length > 0)
@@ -232,9 +292,13 @@ const formatDate = (dateStr: string) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   const today = new Date();
-  const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth();
+  const isToday =
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear();
   return isToday ? '今天' : `${date.getMonth() + 1}月${date.getDate()}日`;
 };
+
 const dateStatusClass = computed(() => {
   if (!props.item.deadline) return '';
   const target = new Date(props.item.deadline).setHours(0, 0, 0, 0);

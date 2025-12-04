@@ -86,7 +86,6 @@ import { type Item } from '@/types';
 
 // 模拟数据
 const tasks = getItems('task');
-// const activeCollapse = ref(['completed']) // 已删除，不再需要
 const newTaskTitle = ref('');
 const dialogVisible = ref(false);
 
@@ -97,8 +96,17 @@ const isTagsDialogOpen = ref(false);
 const currentEditingItem = ref<Item | null>(null);
 
 // 计算属性分离列表
-const pendingTasks = computed(() => tasks.value.filter((t) => t.status !== 'done'));
-const completedTasks = computed(() => tasks.value.filter((t) => t.status === 'done'));
+const pendingTasks = computed(() =>
+  tasks.value
+    .filter((t) => t.status !== 'done')
+    .sort((a, b) => Number(b.isPinned) - Number(a.isPinned))
+);
+
+const completedTasks = computed(() =>
+  tasks.value
+    .filter((t) => t.status === 'done')
+    .sort((a, b) => Number(b.isPinned) - Number(a.isPinned))
+);
 
 const showInput = ref(false);
 // 快速创建
@@ -168,15 +176,24 @@ const handleOpenDialog = (command: 'edit' | 'setTags' | 'setDate', item: Item) =
  * 处理编辑弹窗或标签弹窗返回的更新数据。
  */
 const handleUpdateTask = (updatedData: Partial<Item>) => {
-  if (currentEditingItem.value) {
-    // 使用当前编辑的 Item ID 和弹窗返回的局部更新数据进行更新
-    updateItem(currentEditingItem.value.id, updatedData);
-    ElMessage.success('任务更新成功');
-    // 关闭所有可能打开的弹窗
-    isEditDialogOpen.value = false;
-    isTagsDialogOpen.value = false;
-    currentEditingItem.value = null; // 清除编辑状态
+  if (!currentEditingItem.value) return;
+
+  const mergedData = { ...updatedData };
+
+  // 如果是标签更新，保留原来的标签并合并去重
+  if (updatedData.tags) {
+    const oldTags = currentEditingItem.value.tags || [];
+    const newTags = updatedData.tags || [];
+    mergedData.tags = Array.from(new Set([...oldTags, ...newTags]));
   }
+
+  updateItem(currentEditingItem.value.id, mergedData);
+  ElMessage.success('任务更新成功');
+
+  // 关闭弹窗
+  isEditDialogOpen.value = false;
+  isTagsDialogOpen.value = false;
+  currentEditingItem.value = null;
 };
 </script>
 

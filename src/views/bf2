@@ -16,15 +16,7 @@
           v-for="note in notes"
           :key="note.id"
           :item="note"
-          @openDialog="
-            (command, item) => {
-              if (command === 'edit') {
-                handleViewNote(item.id);
-              } else if (command === 'setTags') {
-                handleSetTags(item);
-              }
-            }
-          "
+          @openDialog="(command, item) => handleViewNote(item.id)"
           @delete="handleDeleteNote"
           @togglePin="handleTogglePin"
         />
@@ -68,17 +60,9 @@
       </div>
     </transition>
   </div>
-
-  <ManageTagsDialog
-    v-if="currentEditingNote"
-    v-model="isTagsDialogOpen"
-    :item="currentEditingNote"
-    @confirm="handleUpdateNoteTags"
-  />
 </template>
 
 <script setup lang="ts">
-import ManageTagsDialog from '@/components/ManageTagsDialog.vue';
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 // 假设 mockData 导出了这些函数
@@ -99,6 +83,20 @@ const currentNoteId = ref<number | null>(null);
 const editTitle = ref('');
 const editContent = ref('');
 const isUnsaved = ref(false);
+
+// 集中处理数据刷新(不再需要)
+// 因为 notesRef 是一个 computed 引用，只要 mockData 中的 items.value 变化，
+// notesRef.value 就会自动更新，从而 notes 也会自动更新。
+// 所以可以移除 refreshNotes 函数，让 Vue 的响应式系统接管。
+// const refreshNotes = () => {
+// 强制重新从 mockData 中获取最新的数据数组
+//   notesRaw.value = getItems('note');
+// };
+
+// 确保初始加载时数据存在（尽管 mockData 理论上应该在顶层加载）
+// onMounted(() => {
+//   refreshNotes();
+// });
 
 // 获取当前笔记数据的引用
 const currentNote = computed(() => {
@@ -166,22 +164,24 @@ const handleCloseEditor = () => {
 
 // 新建笔记
 const handleCreateNote = async () => {
+  const newId = Date.now();
   const newNoteData = {
+    id: newId,
     type: 'note' as const,
     title: '未命名笔记',
     content: '',
     tags: [] as string[],
     priority: 'medium' as const,
     status: 'done' as const,
-    // created_at 可以不传，mockData 会自动加
+    created_at: new Date().toISOString(),
     isPinned: false,
   };
 
-  const created = createItem(newNoteData as Partial<typeof newNoteData>);
+  createItem(newNoteData);
 
-  currentNoteId.value = created.id;
-  editTitle.value = created.title;
-  editContent.value = created.content;
+  currentNoteId.value = newId;
+  editTitle.value = newNoteData.title;
+  editContent.value = newNoteData.content;
 
   drawerVisible.value = true;
   isUnsaved.value = false;
@@ -228,24 +228,6 @@ const handleTogglePin = (id: number) => {
   const item = getItemById(id).value;
   if (!item) return;
   updateItem(id, { isPinned: !item.isPinned });
-};
-
-const isTagsDialogOpen = ref(false);
-const currentEditingNote = ref<(typeof notesRef.value)[0] | null>(null);
-// 打开管理标签对话框
-const handleSetTags = (note: (typeof notesRef.value)[0]) => {
-  currentEditingNote.value = note;
-  isTagsDialogOpen.value = true;
-};
-
-const handleUpdateNoteTags = (updatedData: Partial<(typeof notesRef.value)[0]>) => {
-  if (currentEditingNote.value) {
-    // 只更新 tags
-    updateItem(currentEditingNote.value.id, { tags: updatedData.tags });
-    currentEditingNote.value = null;
-    isTagsDialogOpen.value = false;
-    ElMessage.success('标签更新成功');
-  }
 };
 </script>
 

@@ -10,6 +10,7 @@
         <el-input v-model="form.title" placeholder="请输入标题" />
       </el-form-item>
 
+      <!-- 任务额外字段 -->
       <template v-if="type === 'task'">
         <el-form-item label="任务描述" prop="content">
           <el-input v-model="form.content" type="textarea" :rows="3" placeholder="可选" />
@@ -31,9 +32,20 @@
         </el-form-item>
       </template>
 
-      <el-form-item label="笔记内容 (支持Markdown)" prop="content" v-if="type === 'note'">
-        <el-input v-model="form.content" type="textarea" :rows="5" />
-      </el-form-item>
+      <!-- 笔记字段 -->
+      <template v-if="type === 'note'">
+        <el-form-item label="笔记内容 (支持Markdown)" prop="content">
+          <el-input v-model="form.content" type="textarea" :rows="5" />
+        </el-form-item>
+        <el-form-item label="优先级">
+          <el-radio-group v-model="form.priority">
+            <el-radio-button label="high">高 (P1)</el-radio-button>
+            <el-radio-button label="medium">中 (P2)</el-radio-button>
+            <el-radio-button label="low">低 (P3)</el-radio-button>
+            <el-radio-button label="none">无 (P4)</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+      </template>
     </el-form>
 
     <template #footer>
@@ -48,6 +60,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
+import { createItem } from '@/store/mockData';
 
 // Props
 const props = defineProps<{
@@ -56,14 +69,17 @@ const props = defineProps<{
 }>();
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'confirm']);
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void;
+  (e: 'confirm', item: any): void;
+}>();
 
 const formRef = ref<FormInstance>();
 const form = reactive({
   title: '',
   content: '',
   deadline: '',
-  priority: 'medium' as 'high' | 'medium' | 'low',
+  priority: 'medium' as 'high' | 'medium' | 'low' | 'none',
 });
 
 const rules = reactive<FormRules>({
@@ -87,10 +103,39 @@ watch(
 // 确认
 const handleConfirm = async () => {
   if (!formRef.value) return;
+
   await formRef.value.validate((valid) => {
-    if (valid) {
-      emit('confirm', { ...form });
+    if (!valid) return;
+
+    // 创建新项
+    let newItem: any;
+
+    if (props.type === 'task') {
+      newItem = createItem({
+        type: 'task',
+        title: form.title || '未命名任务',
+        content: form.content || '',
+        deadline: form.deadline,
+        priority: form.priority,
+        status: 'todo',
+        tags: [],
+      });
+    } else if (props.type === 'note') {
+      newItem = createItem({
+        type: 'note',
+        title: form.title || '未命名笔记',
+        content: form.content || '',
+        priority: form.priority,
+        status: 'done',
+        tags: [],
+      });
     }
+
+    // 关闭弹窗
+    emit('update:modelValue', false);
+
+    // 返回新建的 item 给父组件
+    emit('confirm', newItem);
   });
 };
 </script>

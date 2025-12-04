@@ -87,21 +87,24 @@ export const getItemById = (id: number) => {
 };
 
 // 创建 (Create)
-export const createItem = (
-  newItemData: Omit<Item, 'id' | 'created_at' | 'isPinned' | 'tags'> & { tags?: string[] }
-) => {
+export const createItem = (newItemData: Partial<Item>): Item => {
+  const id = typeof newItemData.id === 'number' ? newItemData.id : nextId++;
   const newItem: Item = {
-    ...newItemData,
-    id: nextId++,
+    id,
+    type: (newItemData.type as Item['type']) || 'task',
+    title: newItemData.title || '未命名',
     content: newItemData.content || '',
     tags: newItemData.tags || [],
-    priority: newItemData.priority || 'medium',
-    status: newItemData.status || 'todo',
-    created_at: new Date().toISOString(),
-    isPinned: false,
+    priority: (newItemData.priority as Item['priority']) || 'medium',
+    status: (newItemData.status as Item['status']) || 'todo',
+    deadline: newItemData.deadline || '',
+    created_at: newItemData.created_at || new Date().toISOString(),
+    isPinned: !!newItemData.isPinned,
   };
+  // 将新项放到头部（保持和之前一致）
   items.value.unshift(newItem);
   console.log('Created:', newItem);
+  return newItem;
 };
 
 // 更新 (Update)
