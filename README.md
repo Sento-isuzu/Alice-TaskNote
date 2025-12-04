@@ -1,16 +1,18 @@
 # 项目说明
 
-Nodejs v22  
+Nodejs v22.20.0
 
-Use Vue 3 + Vite + TailWind + Element Plus + FastAPI
+Use Vue 3 + Vite + TailWind + Element Plus
 
-## 部署
+## 安装依赖
 
-``` bash
-pnpm install 
+```bash
+pnpm install
 ```
 
-``` bash
+## 启动服务
+
+```bash
 pnpm run dev
 ```
 
