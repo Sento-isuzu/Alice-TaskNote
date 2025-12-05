@@ -287,6 +287,20 @@ const resetSearch = () => {
     loadTasks();
   }
 };
+
+const handleSearch = () => {
+  const query = searchQuery.value.trim();
+  loadTasks(query);
+};
+
+onMounted(() => loadTasks());
+
+const resetSearch = () => {
+  if (searchQuery.value) {
+    searchQuery.value = '';
+    loadTasks();
+  }
+};
 </script>
 
 <style scoped>
