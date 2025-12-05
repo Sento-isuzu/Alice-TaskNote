@@ -30,3 +30,11 @@ export const deleteTask = async (taskId: number) => {
   const res = await axiosInstance.delete(`/api/tasks/${taskId}`);
   return res.data;
 };
+
+// 搜索任务
+export const searchTasks = async (query: string) => {
+  const res = await axiosInstance.get('/api/tasks', {
+    params: { q: query },
+  });
+  return res.data;
+};

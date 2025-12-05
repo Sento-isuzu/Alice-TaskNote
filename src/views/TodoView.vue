@@ -3,7 +3,13 @@
     <header class="h-16 bg-white rounded-lg flex items-center justify-between px-6">
       <h2 class="text-2xl font-semibold">TODOs</h2>
       <div class="flex items-center space-x-2">
-        <el-input placeholder="搜索..." :prefix-icon="Search" class="w-60" />
+        <el-input
+          placeholder="搜索..."
+          :prefix-icon="Search"
+          class="w-60"
+          v-model="searchQuery"
+          @keyup.enter="handleSearch"
+        />
         <el-button :icon="Filter">过滤</el-button>
         <el-button :icon="Plus" @click="showInput = !showInput">添加</el-button>
       </div>
@@ -31,7 +37,9 @@
         v-for="task in pendingTasks"
         :key="task.id"
         :item="task"
-        @toggle="handleToggleStatus"
+        @toggleStatus="handleToggleStatus"
+        @togglePin="handleTogglePin"
+        @updatePriority="handleUpdatePriority"
         @delete="handleDeleteTask"
         @openDialog="handleOpenDialog"
       />
@@ -44,7 +52,9 @@
         v-for="task in completedTasks"
         :key="task.id"
         :item="task"
-        @toggle-pin="handleToggleStatus"
+        @toggleStatus="handleToggleStatus"
+        @togglePin="handleTogglePin"
+        @updatePriority="handleUpdatePriority"
         @delete="handleDeleteTask"
         @openDialog="handleOpenDialog"
       />
@@ -69,7 +79,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { fetchTasks, createTask, updateTask, deleteTask } from '@/api/task';
+import { fetchTasks, createTask, updateTask, deleteTask, searchTasks } from '@/api/task';
 import ItemCard from '@/components/ItemCard.vue';
 import CreateItemDialog from '@/components/CreateItemDialog.vue';
 import { Search, Filter, Plus } from '@element-plus/icons-vue';
@@ -78,7 +88,7 @@ import ManageTagsDialog from '@/components/ManageTagsDialog.vue';
 import { type Item } from '@/types';
 
 const tasks = ref<Item[]>([]);
-
+const searchQuery = ref('');
 const newTaskTitle = ref('');
 const dialogVisible = ref(false);
 const isEditDialogOpen = ref(false);
@@ -86,10 +96,14 @@ const isTagsDialogOpen = ref(false);
 const currentEditingItem = ref<Item | null>(null);
 const showInput = ref(false);
 
-const loadTasks = async () => {
+const loadTasks = async (query?: string) => {
   try {
-    // 调用后端接口获取所有任务
-    const res = await fetchTasks();
+    let res;
+    if (query) {
+      res = await searchTasks(query);
+    } else {
+      res = await fetchTasks();
+    }
     tasks.value = res as Item[];
   } catch (error) {
     ElMessage.error('加载任务失败，请刷新重试');
@@ -166,13 +180,45 @@ const handleToggleStatus = async (id: number) => {
 
   const newStatus = task.status === 'done' ? 'todo' : 'done';
   try {
-    // 调用后端更新任务状态接口
+    task.status = newStatus;
+
     await updateTask(id, { status: newStatus });
-    ElMessage.success(`任务已${newStatus === 'done' ? '完成' : '恢复待完成'}`);
-    loadTasks(); // 刷新任务列表
+
+    ElMessage.success(newStatus === 'done' ? '任务已完成' : '任务已重启');
   } catch (error) {
-    ElMessage.error('更新状态失败，请重试');
-    console.error('切换任务状态错误：', error);
+    task.status = newStatus === 'done' ? 'todo' : 'done';
+    ElMessage.error('更新状态失败');
+    console.error(error);
+  }
+};
+
+const handleTogglePin = async (item: Item) => {
+  const newPinState = !item.isPinned;
+  try {
+    // 乐观更新
+    const task = tasks.value.find((t) => t.id === item.id);
+    if (task) task.isPinned = newPinState;
+
+    await updateTask(item.id, { isPinned: newPinState });
+    ElMessage.success(newPinState ? '已置顶' : '已取消置顶');
+    // loadTasks(); // 可选：刷新列表以确保排序正确
+  } catch (error) {
+    const task = tasks.value.find((t) => t.id === item.id);
+    if (task) task.isPinned = !newPinState; // 回滚
+    ElMessage.error('操作失败');
+  }
+};
+
+const handleUpdatePriority = async (id: number, priority: 'high' | 'medium' | 'low' | 'none') => {
+  try {
+    const task = tasks.value.find((t) => t.id === id);
+    if (task) task.priority = priority; // 乐观更新
+
+    await updateTask(id, { priority });
+    ElMessage.success('优先级已更新');
+  } catch (error) {
+    ElMessage.error('优先级更新失败');
+    loadTasks(); // 失败则刷新回原状
   }
 };
 
@@ -222,6 +268,20 @@ const handleUpdateTask = async (updatedData: Partial<Item>) => {
   } catch (error) {
     ElMessage.error('更新任务失败，请重试');
     console.error(error);
+  }
+};
+
+const handleSearch = () => {
+  const query = searchQuery.value.trim();
+  loadTasks(query);
+};
+
+onMounted(() => loadTasks());
+
+const resetSearch = () => {
+  if (searchQuery.value) {
+    searchQuery.value = '';
+    loadTasks();
   }
 };
 </script>

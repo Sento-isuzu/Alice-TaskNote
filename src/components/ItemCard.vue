@@ -11,7 +11,7 @@
       <el-checkbox
         v-if="item.type === 'task'"
         :model-value="item.status === 'done'"
-        @change="emit('togglePin', props.item.id)"
+        @change="emit('toggleStatus', props.item.id)"
         size="large"
         :class="priorityClass"
       />
@@ -186,7 +186,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { type Item, type Priority } from '@/types';
-import { updateItem } from '@/store/mockData';
 import { ElMessageBox } from 'element-plus';
 import {
   Calendar,
@@ -203,10 +202,10 @@ import {
 const props = defineProps<{ item: Item }>();
 
 const emit = defineEmits<{
-  (e: 'togglePin', id: number): void;
-  (e: 'delete', id: number): void; // 用于执行删除
-  (e: 'edit', item: Item): void; // 打开单独编辑/设置弹窗（如果需要）
-  (e: 'view', id: number): void;
+  (e: 'toggleStatus', id: number): void;
+  (e: 'togglePin', item: Item): void;
+  (e: 'updatePriority', id: number, priority: Priority): void;
+  (e: 'delete', id: number): void;
   (e: 'openDialog', command: 'edit' | 'setTags' | 'setDate', item: Item): void;
 }>();
 
@@ -217,23 +216,17 @@ const cleanContent = (content: string) => {
 
 const handleContentClick = () => emit('openDialog', 'edit', props.item);
 
-// checkbox change -> emit toggle
-const onToggleCheckbox = () => {
-  emit('togglePin', props.item.id);
-};
-
 const handleCommand = (command: string) => {
   switch (command) {
     case 'edit':
-      // 点下拉的 编辑 -> 告知父组件打开编辑器（与点击卡片同样行为）
       emit('openDialog', 'edit', props.item);
       break;
     case 'togglePin':
-      // 点击置顶/取消置顶：直接更新数据
-      updateItem(props.item.id, { isPinned: !props.item.isPinned });
+      // 3. 不再本地更新，而是通知父组件
+      emit('togglePin', props.item);
       break;
     case 'setDate':
-      emit('openDialog', 'edit', props.item);
+      emit('openDialog', 'setDate', props.item);
       break;
     case 'setTags':
       emit('openDialog', 'setTags', props.item);
@@ -244,18 +237,14 @@ const handleCommand = (command: string) => {
         cancelButtonText: '取消',
         type: 'warning',
       })
-        .then(() => {
-          emit('delete', props.item.id);
-        })
+        .then(() => emit('delete', props.item.id))
         .catch(() => {});
-      break;
-    default:
       break;
   }
 };
 
 const setPriority = (p: Priority) => {
-  updateItem(props.item.id, { priority: p });
+  emit('updatePriority', props.item.id, p);
 };
 
 const cardBackgroundClass = computed(() => {
@@ -272,7 +261,6 @@ const cardBackgroundClass = computed(() => {
 });
 
 const priorityClass = computed(() => `priority-${props.item.priority || 'none'}`);
-
 const shouldShowMeta = computed(() => {
   return (
     props.item.isPinned ||
@@ -317,7 +305,6 @@ const dateStatusClass = computed(() => {
   ).getTime();
 
   const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-
   if (target < localToday) return 'text-red-500';
   if (target === localToday) return 'text-green-600';
   return 'text-purple-500';
