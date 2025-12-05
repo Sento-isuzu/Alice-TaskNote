@@ -45,54 +45,62 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { getItems } from '@/store/mockData';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Search } from '@element-plus/icons-vue';
 import TagCard from '@/components/TagCard.vue';
+import { fetchTags, type TagCount } from '@/api/tag';
 
-const tasks = getItems('task');
-const notes = getItems('note');
+let searchTimer: any = null;
+const DEBOUNCE_TIME = 300;
 
+const allTags = ref<TagCount[]>([]);
 // 搜索查询
 const searchQuery = ref('');
 
+const loadTags = async (query?: string) => {
+  try {
+    const tags = await fetchTags(query);
+    allTags.value = tags;
+  } catch (error) {
+    console.error('加载标签失败:', error);
+    // 可选：显示 ElMessage.error 提示
+  }
+};
+
+onMounted(() => loadTags());
 // 统计任务标签数量
 const taskTags = computed(() => {
-  const tagCount: Record<string, number> = {};
-
-  tasks.value.forEach((task) => {
-    task.tags.forEach((tag) => {
-      tagCount[tag] = (tagCount[tag] || 0) + 1;
-    });
-  });
-
-  return Object.entries(tagCount).map(([name, count]) => ({ name, count }));
+  return allTags.value;
 });
 
 // 统计笔记标签数量
 const noteTags = computed(() => {
-  const tagCount: Record<string, number> = {};
-
-  notes.value.forEach((note) => {
-    note.tags.forEach((tag) => {
-      tagCount[tag] = (tagCount[tag] || 0) + 1;
-    });
-  });
-
-  return Object.entries(tagCount).map(([name, count]) => ({ name, count }));
+  return [];
 });
 
 // 过滤后的标签
 const filteredTaskTags = computed(() => {
-  if (!searchQuery.value) return taskTags.value;
-  const query = searchQuery.value.toLowerCase();
-  return taskTags.value.filter((tag) => tag.name.toLowerCase().includes(query));
+  return taskTags.value.filter((tag) =>
+    tag.name.toLowerCase().includes(searchQuery.value.trim().toLowerCase())
+  );
 });
 
 const filteredNoteTags = computed(() => {
-  if (!searchQuery.value) return noteTags.value;
-  const query = searchQuery.value.toLowerCase();
-  return noteTags.value.filter((tag) => tag.name.toLowerCase().includes(query));
+  return noteTags.value.filter((tag) =>
+    tag.name.toLowerCase().includes(searchQuery.value.trim().toLowerCase())
+  );
+});
+
+watch(searchQuery, (newQuery) => {
+  if (searchTimer !== null) {
+    clearTimeout(searchTimer);
+  }
+
+  const queryStr = newQuery ? newQuery.trim() : '';
+
+  searchTimer = setTimeout(() => {
+    loadTags(queryStr);
+  }, DEBOUNCE_TIME);
 });
 </script>
 
