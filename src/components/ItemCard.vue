@@ -285,15 +285,13 @@ const formatDate = (dateStr: string) => {
   if (isNaN(date.getTime())) return '无效日期';
 
   const today = new Date();
-  // 关键：将日期转换为UTC时间进行比较（避免时区影响）
-  const dateUTC = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const todayUTC = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
-  );
+  // 改用本地时间比较（移除 UTC 方法）
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const isToday = dateUTC.getTime() === todayUTC.getTime();
-  // 按UTC时间格式化显示（月/日）
-  return isToday ? '今天' : `${date.getUTCMonth() + 1}月${date.getUTCDate()}日`;
+  const isToday = targetDate.getTime() === todayDate.getTime();
+  // 用本地时间格式化
+  return isToday ? '今天' : `${date.getMonth() + 1}月${date.getDate()}日`;
 };
 
 const dateStatusClass = computed(() => {

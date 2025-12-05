@@ -10,7 +10,13 @@
           v-model="searchQuery"
           @keyup.enter="handleSearch"
         />
-        <el-button :icon="Filter">过滤</el-button>
+        <el-button
+          :icon="Filter"
+          @click="toggleFilterSearch"
+          :type="isFilterActive ? 'primary' : 'default'"
+        >
+          过滤
+        </el-button>
         <el-button :icon="Plus" @click="showInput = !showInput">添加</el-button>
       </div>
     </header>
@@ -95,6 +101,8 @@ const isEditDialogOpen = ref(false);
 const isTagsDialogOpen = ref(false);
 const currentEditingItem = ref<Item | null>(null);
 const showInput = ref(false);
+
+const isFilterActive = ref(false);
 
 const loadTasks = async (query?: string) => {
   try {
@@ -277,6 +285,26 @@ const handleUpdateTask = async (updatedData: Partial<Item>) => {
 const handleSearch = () => {
   const query = searchQuery.value.trim();
   loadTasks(query);
+  if (query) {
+    isFilterActive.value = true;
+  } else {
+    isFilterActive.value = false;
+  }
+};
+
+const toggleFilterSearch = () => {
+  // 情况 1: 当前非激活状态，且搜索框有内容 -> 执行搜索并激活按钮
+  if (!isFilterActive.value && searchQuery.value.trim()) {
+    isFilterActive.value = true;
+    handleSearch();
+  }
+  // 情况 2: 当前是激活状态 -> 重置搜索，并取消激活按钮
+  else if (isFilterActive.value) {
+    isFilterActive.value = false;
+    searchQuery.value = '';
+    handleSearch();
+  }
+  // 情况 3: 当前非激活状态，且搜索框无内容 -> 不做任何操作
 };
 
 onMounted(() => loadTasks());
