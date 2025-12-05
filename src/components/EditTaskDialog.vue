@@ -13,6 +13,7 @@
         <el-input v-model="form.content" type="textarea" />
       </el-form-item>
       <el-form-item label="截止日期">
+        <!-- 不使用 value-format，这样 v-model 将是 Date | null -->
         <el-date-picker
           v-model="form.deadline"
           type="date"
@@ -43,35 +44,53 @@ import { type Item } from '@/types';
 
 const props = defineProps<{
   modelValue: boolean;
-  item: Item;
+  item: Item | null;
 }>();
 
 const emit = defineEmits(['update:modelValue', 'confirm']);
 
-// 使用响应式引用来复制 prop 的值，以便在弹窗内修改
-const form = ref<Partial<Item>>({});
+// 表单里 deadline 使用 Date | null
+const form = ref<{
+  title: string;
+  content: string;
+  deadline: Date | null;
+  priority: string;
+}>({
+  title: '',
+  content: '',
+  deadline: null,
+  priority: 'none',
+});
 
-// 监听 item 变化，初始化表单
 watch(
   () => props.item,
   (newItem) => {
     if (newItem) {
-      // 复制必要的属性到表单
-      form.value = {
-        title: newItem.title,
-        content: newItem.content,
-        deadline: newItem.deadline,
-        priority: newItem.priority,
-      };
+      form.value.title = newItem.title ?? '';
+      form.value.content = newItem.content ?? '';
+      // 如果后端给的是 ISO 字符串 -> 转 Date
+      form.value.deadline = newItem.deadline ? new Date(newItem.deadline) : null;
+      form.value.priority = newItem.priority ?? 'none';
+    } else {
+      // 清空
+      form.value.title = '';
+      form.value.content = '';
+      form.value.deadline = null;
+      form.value.priority = 'none';
     }
   },
   { immediate: true }
 );
 
 const handleConfirm = () => {
-  // 触发 confirm 事件，将修改后的数据传给父组件
-  emit('confirm', form.value);
-  // 关闭弹窗
+  emit('confirm', {
+    title: form.value.title,
+    content: form.value.content,
+    priority: form.value.priority,
+    deadline: form.value.deadline
+      ? form.value.deadline.toISOString().split('T')[0] // ← 截取成 YYYY-MM-DD
+      : undefined,
+  });
   emit('update:modelValue', false);
 };
 </script>

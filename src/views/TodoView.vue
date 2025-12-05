@@ -44,7 +44,7 @@
         v-for="task in completedTasks"
         :key="task.id"
         :item="task"
-        @toggle="handleToggleStatus"
+        @toggle-pin="handleToggleStatus"
         @delete="handleDeleteTask"
         @openDialog="handleOpenDialog"
       />
@@ -138,13 +138,16 @@ const handleCreateTask = async (data: {
   priority: 'high' | 'medium' | 'low';
 }) => {
   try {
-    // 调用后端创建任务接口
+    const utcDeadline = data.deadline
+      ? new Date(data.deadline + 'T00:00:00').toISOString()
+      : undefined;
+
     await createTask({
       type: 'task',
       title: data.title,
       content: data.content,
       status: 'todo',
-      deadline: data.deadline || undefined,
+      deadline: utcDeadline || undefined,
       priority: data.priority,
       tags: [],
     });
@@ -198,7 +201,9 @@ const handleOpenDialog = (command: 'edit' | 'setTags' | 'setDate', item: Item) =
 const handleUpdateTask = async (updatedData: Partial<Item>) => {
   if (!currentEditingItem.value) return;
 
-  const mergedData = { ...updatedData };
+  const mergedData: Partial<Item> = { ...updatedData };
+
+  // 标签合并（保持你的逻辑）
   if (updatedData.tags) {
     const oldTags = currentEditingItem.value.tags || [];
     const newTags = updatedData.tags || [];
@@ -206,17 +211,17 @@ const handleUpdateTask = async (updatedData: Partial<Item>) => {
   }
 
   try {
-    // 调用后端更新任务接口
     await updateTask(currentEditingItem.value.id, mergedData);
     ElMessage.success('任务更新成功');
-    // 保留原有弹窗关闭逻辑
+
     isEditDialogOpen.value = false;
     isTagsDialogOpen.value = false;
     currentEditingItem.value = null;
-    loadTasks(); // 刷新任务列表
+
+    loadTasks();
   } catch (error) {
     ElMessage.error('更新任务失败，请重试');
-    console.error('更新任务错误：', error);
+    console.error(error);
   }
 };
 </script>

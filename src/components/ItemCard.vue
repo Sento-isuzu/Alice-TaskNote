@@ -291,20 +291,35 @@ const shouldShowDividerForSubtask = computed(() => {
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '无效日期';
+
   const today = new Date();
-  const isToday =
-    date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear();
-  return isToday ? '今天' : `${date.getMonth() + 1}月${date.getDate()}日`;
+  // 关键：将日期转换为UTC时间进行比较（避免时区影响）
+  const dateUTC = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const todayUTC = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+  );
+
+  const isToday = dateUTC.getTime() === todayUTC.getTime();
+  // 按UTC时间格式化显示（月/日）
+  return isToday ? '今天' : `${date.getUTCMonth() + 1}月${date.getUTCDate()}日`;
 };
 
 const dateStatusClass = computed(() => {
   if (!props.item.deadline) return '';
-  const target = new Date(props.item.deadline).setHours(0, 0, 0, 0);
-  const today = new Date().setHours(0, 0, 0, 0);
-  if (target < today) return 'text-red-500';
-  if (target === today) return 'text-green-600';
+  const targetDate = new Date(props.item.deadline);
+  const today = new Date();
+
+  const target = new Date(
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate()
+  ).getTime();
+
+  const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+
+  if (target < localToday) return 'text-red-500';
+  if (target === localToday) return 'text-green-600';
   return 'text-purple-500';
 });
 </script>
