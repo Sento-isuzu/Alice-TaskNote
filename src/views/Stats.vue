@@ -139,7 +139,7 @@
 
         <!-- 任务优先级分布 -->
         <div
-          v-if="priorityData"
+          v-if="priorityData && priorityData.length > 0"
           class="bg-white border border-(--alice-border) rounded-lg p-6 mx-0"
           style="font-family: inherit; color: black"
         >
@@ -227,7 +227,7 @@
               </div>
 
               <div class="mt-2 text-xs" style="font-family: inherit; color: black">
-                完成率: {{ Math.round((priority.completed / priority.total) * 100) }}%
+                完成率: {{ Math.round((priority.completed / priority.total) * 100) || 0 }}%
               </div>
             </div>
           </div>
@@ -243,16 +243,20 @@ import { ElButton, ElMessage } from 'element-plus';
 import ProgressRing from '../components/ProgressRing.vue';
 import BarChart from '../components/BarChart.vue';
 import AreaChart from '../components/AreaChart.vue';
-import { MOCK_STATS_DATA } from '@/store/StatsmockData';
 
 // 响应式数据
 const loading = ref(true);
 const error = ref(null);
 const activeView = ref('week');
 
-// 数据结构
+// 数据的结构
 const statsData = ref({
-  today: {},
+  today: {
+    completed: 0,
+    inProgress: 0,
+    remaining: 0,
+    total: 0,
+  },
   week: [],
   month: [],
   year: [],
@@ -278,27 +282,173 @@ const fetchData = async () => {
     loading.value = true;
     error.value = null;
 
-    const response = await fetch('/api/stats', {
+    // 使用正确的后端 URL
+    const apiUrl = 'http://localhost:8000/api/stats';
+    console.log('请求 URL:', apiUrl);
+
+    const response = await fetch(apiUrl, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
     });
 
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    console.log('响应状态码:', response.status);
 
-    statsData.value = await response.json();
+    if (!response.ok) {
+      throw new Error(`HTTP 错误! 状态码: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('成功获取原始数据:', data);
+
+    // 转换数据格式以适应前端组件
+    const weekData = data.week.map((item) => ({
+      ...item,
+      inProgress: item.inProgress || 0, // 确保有 inProgress 字段
+    }));
+
+    // 转换月份数据：date -> label，并确保有 inProgress 字段
+    const monthData = data.month.map((item) => ({
+      label: item.date, // 将 date 改为 label
+      completed: item.completed || 0,
+      inProgress: item.inProgress || 0,
+      remaining: item.remaining || 0,
+    }));
+
+    // 转换年份数据：month -> label，并确保有 inProgress 字段
+    const yearData = data.year.map((item) => ({
+      label: item.month, // 将 month 改为 label
+      completed: item.completed || 0,
+      inProgress: item.inProgress || 0,
+      remaining: item.remaining || 0,
+    }));
+
+    // 确保优先级数据有正确的字段
+    const priorityData = data.priority.map((item) => ({
+      level: item.level,
+      completed: item.completed || 0,
+      inProgress: item.inProgress || 0,
+      remaining: item.remaining || 0,
+      total: item.total || item.completed + item.inProgress + item.remaining,
+    }));
+
+    // 设置转换后的数据
+    statsData.value = {
+      today: {
+        completed: data.today.completed || 0,
+        inProgress: data.today.inProgress || 0,
+        remaining: data.today.remaining || 0,
+        total: data.today.total || 0,
+      },
+      week: weekData,
+      month: monthData, // 使用转换后的 monthData
+      year: yearData, // 使用转换后的 yearData
+      priority: priorityData,
+    };
+
+    console.log('转换后的数据:', statsData.value);
   } catch (err) {
     console.error('获取数据失败:', err);
     error.value = err.message || '未知错误';
-    ElMessage.error('数据加载失败');
+    ElMessage.error('数据加载失败，使用模拟数据');
+
+    // 如果后端未就绪，使用内置模拟数据
+    await fetchMockData();
   } finally {
     loading.value = false;
   }
 };
 
-// 模拟数据
+// 模拟数据（作为后备）
 const fetchMockData = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  statsData.value = MOCK_STATS_DATA;
+  // 模拟延迟
+  await new Promise((resolve) => setTimeout(resolve, 800));
+
+  const today = new Date();
+
+  // 周数据 - 格式与后端返回一致
+  const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  const weekData = weekDays.map((day, index) => ({
+    day,
+    completed: Math.floor(Math.random() * 10) + 5,
+    inProgress: Math.floor(Math.random() * 5) + 2,
+    remaining: Math.floor(Math.random() * 3) + 1,
+  }));
+
+  // 月数据 - 格式要转换
+  const monthData = [];
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    monthData.push({
+      label: `${date.getMonth() + 1}-${date.getDate()}`, // 使用 label
+      completed: Math.floor(Math.random() * 15) + 5,
+      inProgress: Math.floor(Math.random() * 8) + 3,
+      remaining: Math.floor(Math.random() * 5) + 1,
+    });
+  }
+
+  // 年数据 - 格式要转换
+  const months = [
+    '1月',
+    '2月',
+    '3月',
+    '4月',
+    '5月',
+    '6月',
+    '7月',
+    '8月',
+    '9月',
+    '10月',
+    '11月',
+    '12月',
+  ];
+  const yearData = months.map((month, index) => ({
+    label: month, // 使用 label
+    completed: 30 + index * 8,
+    inProgress: 10 + index * 3,
+    remaining: 5 + index * 2,
+  }));
+
+  // 优先级数据
+  const priorityData = [
+    {
+      level: 'high',
+      completed: Math.floor(Math.random() * 10) + 5,
+      inProgress: Math.floor(Math.random() * 5) + 2,
+      remaining: Math.floor(Math.random() * 3) + 1,
+      total: 15,
+    },
+    {
+      level: 'medium',
+      completed: Math.floor(Math.random() * 15) + 8,
+      inProgress: Math.floor(Math.random() * 8) + 3,
+      remaining: Math.floor(Math.random() * 5) + 2,
+      total: 25,
+    },
+    {
+      level: 'low',
+      completed: Math.floor(Math.random() * 8) + 4,
+      inProgress: Math.floor(Math.random() * 4) + 2,
+      remaining: Math.floor(Math.random() * 3) + 1,
+      total: 15,
+    },
+  ];
+
+  statsData.value = {
+    today: {
+      completed: Math.floor(Math.random() * 10) + 5,
+      inProgress: Math.floor(Math.random() * 5) + 3,
+      remaining: Math.floor(Math.random() * 4) + 2,
+      total: Math.floor(Math.random() * 15) + 10,
+    },
+    week: weekData,
+    month: monthData, // 使用转换后的格式
+    year: yearData, // 使用转换后的格式
+    priority: priorityData,
+  };
 };
 
 // 计算属性
@@ -310,8 +460,7 @@ const priorityData = computed(() => statsData.value.priority);
 
 // 初始化
 onMounted(async () => {
-  await fetchMockData();
-  loading.value = false;
+  await fetchData();
 });
 </script>
 

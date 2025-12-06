@@ -54,7 +54,7 @@
             class="text-gray-500 hover:text-blue-600 transition-colors flex items-center gap-0.5"
           >
             <el-icon class="scale-75"><PriceTag /></el-icon>
-            {{ tag }}
+            {{ tag.name }}
           </span>
         </div>
 
