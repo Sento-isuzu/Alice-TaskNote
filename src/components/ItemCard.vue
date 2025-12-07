@@ -50,12 +50,11 @@
           <span v-if="item.deadline || item.isPinned" class="text-gray-300">|</span>
           <span
             v-for="tag in item.tags"
-            :key="typeof tag === 'object' ? tag.id : tag"
+            :key="tag.id"
             class="text-gray-500 hover:text-blue-600 transition-colors flex items-center gap-0.5"
           >
             <el-icon class="scale-75"><PriceTag /></el-icon>
-            {{ typeof tag === 'object' ? tag.name : tag }}
-            <!-- {{ tag.name }} -->
+            {{ tag.name }}
           </span>
         </div>
 
@@ -266,12 +265,12 @@ const cardBackgroundClass = computed(() => {
 
 const priorityClass = computed(() => `priority-${props.item.priority || 'none'}`);
 const shouldShowMeta = computed(() => {
-  return (
-    props.item.isPinned ||
-    props.item.deadline ||
-    (props.item.tags && props.item.tags.length > 0) ||
-    (props.item.subTasks && props.item.subTasks.length > 0)
-  );
+  return true;
+  //   props.item.isPinned ||
+  //   props.item.deadline ||
+  //   (props.item.tags && props.item.tags.length > 0) ||
+  //   (props.item.subTasks && props.item.subTasks.length > 0)
+  // );
 });
 
 const shouldShowDividerForSubtask = computed(() => {

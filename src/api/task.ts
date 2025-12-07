@@ -7,6 +7,40 @@ const axiosInstance = axios.create({
   timeout: 5000,
 });
 
+// 类型定义
+export interface TaskCreateParams {
+  title: string;
+  content: string;
+  status?: 'todo' | 'doing' | 'done';
+  priority: 'high' | 'medium' | 'low' | 'none';
+  deadline?: string;
+  tags?: number[]; // 标签ID数组，不是标签对象数组
+}
+
+export interface TaskUpdateParams {
+  title?: string;
+  content?: string;
+  status?: 'todo' | 'doing' | 'done';
+  isPinned?: boolean;
+  priority?: 'high' | 'medium' | 'low' | 'none';
+  deadline?: string;
+  tags?: number[]; // 标签ID数组
+}
+
+export interface TaskResponse {
+  id: number;
+  type: 'task';
+  title: string;
+  content: string;
+  status: 'todo' | 'doing' | 'done';
+  priority: 'high' | 'medium' | 'low' | 'none';
+  deadline?: string;
+  tags: { id: number; name: string; color?: string }[];
+  isPinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // 获取所有任务
 export const fetchTasks = async () => {
   const res = await axiosInstance.get('/api/tasks/'); // 添加末尾斜杠

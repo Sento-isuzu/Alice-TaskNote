@@ -21,6 +21,7 @@
           :key="'task-' + tag.name"
           :tag="tag"
           :type="'task'"
+          @deleted="handleTagDeleted"
         />
       </div>
       <el-empty v-if="filteredTaskTags.length === 0" description="暂无任务标签" />
@@ -37,6 +38,7 @@
           :key="'note-' + tag.name"
           :tag="tag"
           :type="'note'"
+          @deleted="handleTagDeleted"
         />
       </div>
       <el-empty v-if="filteredNoteTags.length === 0" description="暂无笔记标签" />
@@ -68,14 +70,14 @@ const loadTags = async (query?: string) => {
 };
 
 onMounted(() => loadTags());
-// 统计任务标签数量
+// 统计任务标签数量 - 只显示有任务关联的标签
 const taskTags = computed(() => {
-  return allTags.value;
+  return allTags.value.filter((tag) => (tag.task_count || 0) > 0);
 });
 
-// 统计笔记标签数量
+// 统计笔记标签数量 - 只显示有笔记关联的标签
 const noteTags = computed(() => {
-  return [];
+  return allTags.value.filter((tag) => (tag.note_count || 0) > 0);
 });
 
 // 过滤后的标签
@@ -89,6 +91,14 @@ const filteredNoteTags = computed(() => {
   return noteTags.value.filter((tag) =>
     tag.name.toLowerCase().includes(searchQuery.value.trim().toLowerCase())
   );
+});
+
+const handleTagDeleted = () => {
+  // 方式1：重新请求数据（最可靠，确保与后端一致）
+  loadTags();
+};
+onMounted(() => {
+  loadTags();
 });
 
 watch(searchQuery, (newQuery) => {

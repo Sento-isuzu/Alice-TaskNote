@@ -54,7 +54,7 @@ const MOCK_ITEMS: Item[] = [
     type: 'note',
     title: '会议纪要',
     content: '### 11月9日周会\n- 讨论MVP功能\n- 确定技术栈',
-    tags: ['project', 'work'],
+    tags: ['work', 'meeting'],
     priority: 'medium',
     status: 'done',
     created_at: '2025-11-09 14:00',

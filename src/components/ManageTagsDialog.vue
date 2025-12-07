@@ -8,14 +8,15 @@
     <p class="text-sm text-gray-500 mb-3">为任务添加或移除标签。</p>
 
     <el-tag
-      v-for="tag in currentTags"
-      :key="tag"
+      v-for="tag in currentTagObjects"
+      :key="tag.id ?? `temp-${tag.name}`"
       closable
       :disable-transitions="false"
       @close="handleTagClose(tag)"
       class="mr-2 mb-2"
+      :style="{ backgroundColor: tag.color || '#e9e9eb' }"
     >
-      {{ tag }}
+      {{ tag.name }}
     </el-tag>
 
     <el-input
@@ -38,16 +39,17 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { createTag, fetchTags, Tag } from '@/api/tag';
 import { type Item } from '@/types';
-import { ElInput } from 'element-plus'; // 导入 ElInput 类型
+import { ElInput, ElMessage } from 'element-plus';
 
 const props = defineProps<{
   modelValue: boolean;
   item: Item;
 }>();
 
-const emit = defineEmits(['update:modelValue', 'confirm']);
-
+const emit = defineEmits(['update:modelValue', 'confirm', 'confirm-tags']);
+const currentTagObjects = ref<Tag[]>([]);
 const currentTags = ref<string[]>([]);
 const inputValue = ref('');
 const inputVisible = ref(false);
@@ -58,19 +60,18 @@ watch(
   () => props.item,
   (newItem) => {
     if (newItem && newItem.tags) {
-      currentTags.value = [...newItem.tags];
+      currentTags.value = newItem.tags.map((tag) => tag.name);
+      currentTagObjects.value = [...newItem.tags];
     }
   },
   { immediate: true }
 );
 
-const handleTagClose = (tag: string) => {
-  currentTags.value.splice(currentTags.value.indexOf(tag), 1);
+const handleTagClose = (tag: Tag) => {
+  currentTagObjects.value = currentTagObjects.value.filter((t) => t.id !== tag.id);
 };
-
 const showInput = () => {
   inputVisible.value = true;
-  // 等待 DOM 更新后聚焦
   setTimeout(() => {
     inputRef.value?.input?.focus();
   });
@@ -78,16 +79,48 @@ const showInput = () => {
 
 const handleInputConfirm = () => {
   if (inputValue.value && !currentTags.value.includes(inputValue.value)) {
-    currentTags.value.push(inputValue.value);
+    const newTagName = inputValue.value;
+    currentTags.value.push(newTagName);
+    currentTagObjects.value.push({ id: null, name: newTagName, color: '#909399' });
   }
   inputVisible.value = false;
   inputValue.value = '';
 };
 
-const handleConfirm = () => {
-  // 触发 confirm 事件，只传 tags 属性
-  emit('confirm', { tags: currentTags.value });
-  // 关闭弹窗
-  emit('update:modelValue', false);
+const handleConfirm = async () => {
+  try {
+    const existingTags = await fetchTags();
+    const tagObjects: Tag[] = [];
+
+    for (const tag of currentTagObjects.value) {
+      // 如果标签已经有ID，直接使用
+      if (tag.id !== null) {
+        const existingTag = existingTags.find((t) => t.id === tag.id);
+        if (existingTag) {
+          tagObjects.push(existingTag);
+          continue;
+        }
+      }
+
+      // 否则按名称查找或创建
+      const existingTag = existingTags.find((t) => t.name === tag.name);
+      if (existingTag) {
+        tagObjects.push(existingTag);
+      } else {
+        const newTag = await createTag({
+          name: tag.name,
+          color: tag.color || '#909399',
+        });
+        tagObjects.push(newTag);
+      }
+    }
+
+    emit('confirm-tags', tagObjects);
+    emit('update:modelValue', false);
+    ElMessage.success('标签设置成功');
+  } catch (error) {
+    ElMessage.error('标签设置失败，请重试');
+    console.error('标签处理错误:', error);
+  }
 };
 </script>

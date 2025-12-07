@@ -76,7 +76,18 @@ const notesApi = {
 
   // 更新笔记标签
   updateNoteTags: (id: number, tags: number[]): Promise<Note> => {
-    return api.patch(`/notes/${id}/tags`, { tags });
+    console.log(`[API] 更新笔记标签: note_id=${id}, tags=`, tags);
+    return api
+      .patch(`/notes/${id}/tags`, { tags })
+      .then((response) => {
+        console.log(`[API] 更新笔记标签成功:`, response);
+        return response;
+      })
+      .catch((error) => {
+        console.error(`[API] 更新笔记标签失败:`, error);
+        console.error(`[API] 错误详情:`, error.response?.data || error.message);
+        throw error;
+      });
   },
 
   // 批量删除

@@ -78,12 +78,12 @@
     v-if="currentEditingItem"
     v-model="isTagsDialogOpen"
     :item="currentEditingItem"
-    @confirm="handleUpdateTask"
+    @confirm-tags="handleUpdateTags"
   />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onActivated } from 'vue';
 import { ElMessage } from 'element-plus';
 import { fetchTasks, createTask, updateTask, deleteTask, searchTasks } from '@/api/task';
 import ItemCard from '@/components/ItemCard.vue';
@@ -91,7 +91,7 @@ import CreateItemDialog from '@/components/CreateItemDialog.vue';
 import { Search, Filter, Plus } from '@element-plus/icons-vue';
 import EditTaskDialog from '@/components/EditTaskDialog.vue';
 import ManageTagsDialog from '@/components/ManageTagsDialog.vue';
-import { type Item } from '@/types';
+import { type Item, type Tag } from '@/types';
 
 const tasks = ref<Item[]>([]);
 const searchQuery = ref('');
@@ -101,8 +101,11 @@ const isEditDialogOpen = ref(false);
 const isTagsDialogOpen = ref(false);
 const currentEditingItem = ref<Item | null>(null);
 const showInput = ref(false);
-
 const isFilterActive = ref(false);
+
+onActivated(() => {
+  loadTasks();
+});
 
 const loadTasks = async (query?: string) => {
   try {
@@ -112,14 +115,22 @@ const loadTasks = async (query?: string) => {
     } else {
       res = await fetchTasks();
     }
-    tasks.value = res as Item[];
+
+    console.log('加载的任务数据:', res);
+    if (res.length > 0) {
+      console.log('第一个任务的标签:', res[0].tags);
+      console.log('标签类型:', typeof res[0].tags);
+    }
+
+    // 确保任务的tags属性被正确初始化
+    tasks.value = (res as Item[]).map((item) => ({
+      ...item,
+      tags: item.tags || [],
+    }));
   } catch (error) {
     ElMessage.error('加载任务失败，请刷新重试');
-    console.error('加载任务错误：', error);
   }
 };
-// 页面挂载时加载任务
-onMounted(() => loadTasks());
 
 const pendingTasks = computed(() =>
   tasks.value
@@ -241,6 +252,7 @@ const handleDeleteTask = async (id: number) => {
 };
 
 const handleOpenDialog = (command: 'edit' | 'setTags' | 'setDate', item: Item) => {
+  console.log(`打开对话框: ${command}, 任务ID: ${item.id}`);
   currentEditingItem.value = item;
   if (command === 'edit' || command === 'setDate') {
     isEditDialogOpen.value = true;
@@ -254,31 +266,24 @@ const handleUpdateTask = async (updatedData: Partial<Item>) => {
 
   const payload: any = {};
 
-  for (const key in updatedData) {
-    if (key === 'tags') {
-      const tagsArray = (updatedData.tags as any[]) || [];
-      // 提取 ID 发送给后端
-      payload.tags = tagsArray
-        .map((t) => (typeof t === 'object' && t !== null ? t.id : t))
-        .filter((id) => typeof id === 'number');
-    } else {
-      payload[key] = (updatedData as any)[key];
-    }
-  }
+  // 处理其他字段
+  if (updatedData.title !== undefined) payload.title = updatedData.title;
+  if (updatedData.content !== undefined) payload.content = updatedData.content;
+  if (updatedData.deadline !== undefined) payload.deadline = updatedData.deadline;
+  if (updatedData.priority !== undefined) payload.priority = updatedData.priority;
+  if (updatedData.status !== undefined) payload.status = updatedData.status;
+
+  console.log('编辑任务，提交给后端的payload:', payload);
 
   try {
     await updateTask(currentEditingItem.value.id, payload);
-
     ElMessage.success('任务更新成功');
-
     isEditDialogOpen.value = false;
-    isTagsDialogOpen.value = false;
     currentEditingItem.value = null;
-
-    loadTasks();
+    loadTasks(); // 重新加载任务列表
   } catch (error) {
-    // ... 错误处理 ...
-    loadTasks();
+    ElMessage.error('更新失败，请重试');
+    console.error('更新任务错误:', error);
   }
 };
 
@@ -313,6 +318,37 @@ const resetSearch = () => {
   if (searchQuery.value) {
     searchQuery.value = '';
     loadTasks();
+  }
+};
+
+// 在 TodoView.vue 中添加
+const handleUpdateTags = async (tags: Tag[]) => {
+  console.log('handleUpdateTags 被调用！');
+  console.log('接收到的标签:', tags);
+  console.log('当前编辑的任务:', currentEditingItem.value);
+
+  if (!currentEditingItem.value) {
+    console.error('没有当前编辑的任务！');
+    return;
+  }
+
+  try {
+    // 提取标签 ID 数组
+    const tagIds = tags.map((tag) => tag.id).filter((id) => id !== null && id !== undefined);
+
+    console.log('更新标签，标签ID数组:', tagIds);
+
+    // 调用更新任务接口，只更新 tags 字段
+    await updateTask(currentEditingItem.value.id, {
+      tags: tagIds,
+    });
+
+    ElMessage.success('标签更新成功');
+    isTagsDialogOpen.value = false;
+    loadTasks(); // 重新加载任务列表
+  } catch (error) {
+    ElMessage.error('标签更新失败');
+    console.error('更新标签错误:', error);
   }
 };
 </script>
