@@ -6,7 +6,7 @@
         <div class="flex items-center space-x-2">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索标题、内容或标签..."
+            placeholder="搜索笔记..."
             :prefix-icon="Search"
             class="w-60"
             @input="handleSearch"
@@ -21,18 +21,10 @@
         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto pb-4"
       >
         <ItemCard
-          v-for="note in notes"
-          :key="note.id"
-          :item="note"
-          @openDialog="
-            (command, item) => {
-              if (command === 'edit') {
-                handleViewNote(item.id);
-              } else if (command === 'setTags') {
-                handleSetTags(item);
-              }
-            }
-          "
+          v-for="noteItem in notes"
+          :key="noteItem.id"
+          :item="noteItem"
+          @openDialog="handleOpenDialog"
           @delete="handleDeleteNote"
           @togglePin="handleTogglePin"
           @updatePriority="handleUpdatePriority"
@@ -93,11 +85,13 @@
 import ManageTagsDialog from '@/components/ManageTagsDialog.vue';
 import { ref, computed, watch, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { type Item, type Tag } from '@/types';
 import ItemCard from '@/components/ItemCard.vue';
 import { Search, Plus, Close } from '@element-plus/icons-vue';
 import { marked } from 'marked';
 import notesApi from '@/api/notes';
 
+//添加类型导入
 interface Note {
   id: number;
   type: string;
@@ -106,16 +100,17 @@ interface Note {
   priority: string;
   status: string;
   isPinned: boolean;
-  tags: Array<{ id: number; name: string; color: string }>;
+  tags: { id: number; name: string; color?: string }[];
   created_at: string;
   updated_at: string;
 }
 
 // 响应式数据
-const notes = ref<Note[]>([]);
+const notes = ref<Item[]>([]);
 const loading = ref(false);
 const searchKeyword = ref('');
-const searchTimeout = ref<number | null>(null);
+
+const searchTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 // 编辑器状态
 const drawerVisible = ref(false);
@@ -127,7 +122,12 @@ const saving = ref(false);
 
 // 标签对话框状态
 const isTagsDialogOpen = ref(false);
-const currentEditingNote = ref<Note | null>(null);
+const currentEditingNote = ref<Item | null>(null);
+
+const handleSetTags = (item: Item) => {
+  currentEditingNote.value = item;
+  isTagsDialogOpen.value = true;
+};
 
 // 获取当前笔记
 const currentNote = computed(() => {
@@ -162,7 +162,9 @@ const loadNotes = async () => {
       sort_by: 'isPinned',
       order: 'desc',
     });
-    notes.value = response;
+
+    notes.value = response.map(convertNoteToItem);
+    console.log('加载的笔记数据:', notes.value);
   } catch (error) {
     console.error('加载笔记失败:', error);
     ElMessage.error('加载笔记失败，请重试');
@@ -310,8 +312,8 @@ const handleDeleteNote = async (id: number) => {
   }
 };
 
-// 置顶逻辑 - 修复消息提示
-const handleTogglePin = async (item: Note) => {
+// 置顶逻辑
+const handleTogglePin = async (item: Item) => {
   try {
     await notesApi.togglePinNote(item.id);
 
@@ -326,78 +328,54 @@ const handleTogglePin = async (item: Note) => {
   }
 };
 
-// 静态标签数据
-const staticTags = ref([
-  { id: 1, name: '工作', color: '#3498db' },
-  { id: 2, name: '学习', color: '#2ecc71' },
-  { id: 3, name: '生活', color: '#e74c3c' },
-  { id: 4, name: '重要', color: '#f39c12' },
-  { id: 5, name: '待办', color: '#9b59b6' },
-  { id: 6, name: '参考', color: '#1abc9c' },
-  { id: 7, name: '想法', color: '#34495e' },
-  { id: 8, name: '项目', color: '#d35400' },
-]);
-
-// 修改 handleSetTags 函数，使用静态标签
-const handleSetTags = (note: Note) => {
-  currentEditingNote.value = note;
-  isTagsDialogOpen.value = true;
+const refreshTagList = async () => {
+  try {
+    console.log('标签已更新，请切换到标签页面查看');
+    await loadNotes();
+  } catch (error) {
+    console.error('刷新标签列表失败:', error);
+  }
 };
 
-// 修改标签更新逻辑，只在前端操作
-const handleUpdateNoteTags = async (updatedData: any) => {
+// 标签更新逻辑
+const handleUpdateNoteTags = async (tags: Tag[]) => {
   if (!currentEditingNote.value) return;
 
   try {
-    const tagIds = updatedData.tags?.map((tag: any) => tag.id) || [];
+    const tagIds = tags.map((tag) => tag.id).filter((id) => id !== null);
 
-    // 前端模拟更新标签
-    const updatedNote = {
-      ...currentEditingNote.value,
-      tags: staticTags.value.filter((tag) => tagIds.includes(tag.id)),
-    };
+    await notesApi.updateNoteTags(currentEditingNote.value.id, tagIds);
 
-    // 更新本地笔记列表
-    const index = notes.value.findIndex((note) => note.id === updatedNote.id);
-    if (index !== -1) {
-      notes.value[index] = updatedNote;
-    }
+    ElMessage.success('标签更新成功');
+    currentEditingNote.value = null;
+    isTagsDialogOpen.value = false;
 
-    ElMessage.success('标签更新成功（仅前端）');
+    // 刷新笔记列表
+    await loadNotes();
 
-    // 如果当前正在编辑这个笔记，更新编辑器的数据
-    if (currentNoteId.value === updatedNote.id) {
-      const targetNote = notes.value.find((note) => note.id === updatedNote.id);
-      if (targetNote) {
-        editTitle.value = targetNote.title;
-        editContent.value = targetNote.content;
-      }
-    }
+    refreshTagList();
   } catch (error) {
     console.error('更新标签失败:', error);
     ElMessage.error('更新标签失败');
-  } finally {
-    currentEditingNote.value = null;
-    isTagsDialogOpen.value = false;
   }
 };
 
 // 更新优先级
 const handleUpdatePriority = async (id: number, priority: string) => {
   try {
-    await notesApi.updateNote(id, { priority });
+    const validPriorities = ['high', 'medium', 'low'] as const;
+    let priorityValue: 'high' | 'medium' | 'low';
+
+    if (validPriorities.includes(priority as any)) {
+      priorityValue = priority as 'high' | 'medium' | 'low';
+    } else {
+      priorityValue = 'medium';
+    }
+
+    await notesApi.updateNote(id, { priority: priorityValue });
     ElMessage.success('优先级更新成功');
     // 刷新笔记列表
     await loadNotes();
-
-    // 如果当前正在编辑这个笔记，也更新编辑器中的笔记数据
-    if (currentNoteId.value === id) {
-      const updatedNote = await notesApi.getNoteById(id);
-      const index = notes.value.findIndex((note) => note.id === id);
-      if (index !== -1) {
-        notes.value[index] = updatedNote;
-      }
-    }
   } catch (error) {
     console.error('更新优先级失败:', error);
     ElMessage.error('更新优先级失败，请重试');
@@ -407,23 +385,64 @@ const handleUpdatePriority = async (id: number, priority: string) => {
 // 更新状态
 const handleUpdateStatus = async (id: number, status: string) => {
   try {
-    await notesApi.updateNote(id, { status });
+    const validStatuses = ['todo', 'doing', 'done'] as const;
+    const statusValue = validStatuses.includes(status as any)
+      ? (status as 'todo' | 'doing' | 'done')
+      : 'done';
+
+    await notesApi.updateNote(id, { status: statusValue });
     ElMessage.success('状态更新成功');
     // 刷新笔记列表
     await loadNotes();
-
-    // 如果当前正在编辑这个笔记，也更新编辑器中的笔记数据
-    if (currentNoteId.value === id) {
-      const updatedNote = await notesApi.getNoteById(id);
-      const index = notes.value.findIndex((note) => note.id === id);
-      if (index !== -1) {
-        notes.value[index] = updatedNote;
-      }
-    }
   } catch (error) {
     console.error('更新状态失败:', error);
     ElMessage.error('更新状态失败，请重试');
   }
+};
+
+const convertNoteToItem = (note: any): Item => {
+  let priority: 'high' | 'medium' | 'low' | 'none';
+  if (note.priority === 'high' || note.priority === 'medium' || note.priority === 'low') {
+    priority = note.priority;
+  } else {
+    priority = 'none';
+  }
+
+  let tagsArray = [];
+  if (note.tags && Array.isArray(note.tags)) {
+    tagsArray = note.tags.map((tag: any) => ({
+      id: tag.id || 0,
+      name: tag.name || '',
+      color: tag.color || '#909399',
+    }));
+  } else if (note.tags) {
+    console.warn('Note tags 不是数组:', note.tags);
+    tagsArray = [];
+  }
+
+  return {
+    id: note.id,
+    type: 'note' as const,
+    title: note.title || '',
+    content: note.content || '',
+    priority: priority,
+    status: (note.status || 'done') as 'todo' | 'doing' | 'done' | string,
+    isPinned: note.isPinned || false,
+    tags: tagsArray,
+    created_at: note.created_at || note.createdAt || new Date().toISOString(),
+    updated_at: note.updated_at || note.updatedAt || new Date().toISOString(),
+    createdAt: note.createdAt || note.created_at || new Date().toISOString(),
+    updatedAt: note.updatedAt || note.updated_at || new Date().toISOString(),
+  };
+};
+
+const handleOpenDialog = (command: 'edit' | 'setTags' | 'setDate', item: Item) => {
+  if (command === 'edit') {
+    handleViewNote(item.id);
+  } else if (command === 'setTags') {
+    handleSetTags(item);
+  }
+  // 注意：笔记没有 setDate 命令，可以忽略
 };
 
 // 组件挂载时加载笔记
@@ -433,7 +452,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 定义滚动条样式，让编辑器和预览区看起来更精致 */
 textarea::-webkit-scrollbar,
 .overflow-y-auto::-webkit-scrollbar {
   width: 6px;

@@ -46,11 +46,11 @@
           <span>{{ formatDate(item.deadline) }}</span>
         </span>
 
-        <div v-if="item.tags && item.tags.length > 0" class="flex items-center gap-2">
+        <div v-if="hasTags" class="flex items-center gap-2">
           <span v-if="item.deadline || item.isPinned" class="text-gray-300">|</span>
           <span
             v-for="tag in item.tags"
-            :key="tag"
+            :key="tag.id"
             class="text-gray-500 hover:text-blue-600 transition-colors flex items-center gap-0.5"
           >
             <el-icon class="scale-75"><PriceTag /></el-icon>
@@ -111,7 +111,7 @@
                     <el-icon><Flag /></el-icon> 低 (P3)
                   </el-dropdown-item>
                   <el-dropdown-item @click.stop="setPriority('none')">
-                    <el-icon><Flag /></el-icon> 无
+                    <el-icon><Flag /></el-icon> 无 (p4)
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -129,6 +129,8 @@
               </span>
             </el-dropdown-item>
           </template>
+
+          <!-- task -->
           <template v-else>
             <el-dropdown-item command="edit">
               <el-icon><Edit /></el-icon> 编辑
@@ -261,19 +263,17 @@ const cardBackgroundClass = computed(() => {
 });
 
 const priorityClass = computed(() => `priority-${props.item.priority || 'none'}`);
+
+const hasTags = computed(() => {
+  return props.item.tags && Array.isArray(props.item.tags) && props.item.tags.length > 0;
+});
+
 const shouldShowMeta = computed(() => {
-  return (
-    props.item.isPinned ||
-    props.item.deadline ||
-    (props.item.tags && props.item.tags.length > 0) ||
-    (props.item.subTasks && props.item.subTasks.length > 0)
-  );
+  return props.item.isPinned || props.item.deadline || hasTags.value;
 });
 
 const shouldShowDividerForSubtask = computed(() => {
-  return (
-    props.item.isPinned || props.item.deadline || (props.item.tags && props.item.tags.length > 0)
-  );
+  return props.item.isPinned || props.item.deadline || hasTags.value;
 });
 
 const formatDate = (dateStr: string) => {
@@ -282,15 +282,12 @@ const formatDate = (dateStr: string) => {
   if (isNaN(date.getTime())) return '无效日期';
 
   const today = new Date();
-  // 关键：将日期转换为UTC时间进行比较（避免时区影响）
-  const dateUTC = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const todayUTC = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
-  );
+  //本地时间比较
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const isToday = dateUTC.getTime() === todayUTC.getTime();
-  // 按UTC时间格式化显示（月/日）
-  return isToday ? '今天' : `${date.getUTCMonth() + 1}月${date.getUTCDate()}日`;
+  const isToday = targetDate.getTime() === todayDate.getTime();
+  return isToday ? '今天' : `${date.getMonth() + 1}月${date.getDate()}日`;
 };
 
 const dateStatusClass = computed(() => {
@@ -312,7 +309,6 @@ const dateStatusClass = computed(() => {
 </script>
 
 <style scoped>
-/* 优先级复选框颜色 (保持不变) */
 :deep(.priority-high .el-checkbox__inner) {
   border-color: #d1453b;
 }
@@ -341,7 +337,6 @@ const dateStatusClass = computed(() => {
   border-color: #dcdfe6;
 }
 
-/* checkbox 改圆形 */
 :deep(.el-checkbox__inner) {
   border-radius: 9999px !important;
 }
@@ -350,12 +345,10 @@ const dateStatusClass = computed(() => {
   border-radius: 9999px !important;
 }
 
-/* 修复 Element Plus 默认微妙偏移 */
 :deep(.el-checkbox__input) {
   vertical-align: middle !important;
 }
 
-/* 修复 Checkbox 对齐 */
 :deep(.el-checkbox__input) {
   vertical-align: top;
 }

@@ -49,6 +49,10 @@ const props = defineProps<{
 
 const emit = defineEmits(['update:modelValue', 'confirm']);
 
+const padTo2Digits = (num: number) => {
+  return num.toString().padStart(2, '0');
+};
+
 // 表单里 deadline 使用 Date | null
 const form = ref<{
   title: string;
@@ -83,13 +87,24 @@ watch(
 );
 
 const handleConfirm = () => {
+  let formattedDeadline: string | undefined = undefined;
+
+  if (form.value.deadline) {
+    const date = form.value.deadline;
+    formattedDeadline = [
+      date.getFullYear(),
+      // getMonth() 返回 0-11，所以需要 +1
+      padTo2Digits(date.getMonth() + 1),
+      padTo2Digits(date.getDate()),
+    ].join('-');
+  }
+
   emit('confirm', {
     title: form.value.title,
     content: form.value.content,
     priority: form.value.priority,
-    deadline: form.value.deadline
-      ? form.value.deadline.toISOString().split('T')[0] // ← 截取成 YYYY-MM-DD
-      : undefined,
+    // 使用本地时间格式化的字符串
+    deadline: formattedDeadline,
   });
   emit('update:modelValue', false);
 };

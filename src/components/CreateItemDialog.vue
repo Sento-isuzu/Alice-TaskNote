@@ -28,6 +28,7 @@
             <el-radio-button label="high">高</el-radio-button>
             <el-radio-button label="medium">中</el-radio-button>
             <el-radio-button label="low">低</el-radio-button>
+            <el-radio-button label="none">无</el-radio-button>
           </el-radio-group>
         </el-form-item>
       </template>
@@ -60,7 +61,6 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
-import { createItem } from '@/store/mockData';
 
 // Props
 const props = defineProps<{
@@ -78,7 +78,7 @@ const formRef = ref<FormInstance>();
 const form = reactive({
   title: '',
   content: '',
-  deadline: '',
+  deadline: '' as Date | string | null,
   priority: 'medium' as 'high' | 'medium' | 'low' | 'none',
 });
 
@@ -95,7 +95,7 @@ watch(
       form.title = '';
       form.content = '';
       form.deadline = '';
-      form.priority = 'medium';
+      form.priority = 'none';
     }
   }
 );
@@ -107,35 +107,33 @@ const handleConfirm = async () => {
   await formRef.value.validate((valid) => {
     if (!valid) return;
 
-    // 创建新项
-    let newItem: any;
+    // 格式化截止日期
+    let deadlineStr = '';
+    if (form.deadline) {
+      if (form.deadline instanceof Date) {
+        // 如果是Date对象，格式化为 YYYY-MM-DD
+        deadlineStr = form.deadline.toISOString().split('T')[0];
+      } else if (typeof form.deadline === 'string') {
+        deadlineStr = form.deadline.split('T')[0]; // 处理带时间的字符串
+      }
+    }
+
+    // 直接返回表单数据给父组件，让父组件调用API
+    const formData: any = {
+      title: form.title || (props.type === 'task' ? '未命名任务' : '未命名笔记'),
+      content: form.content || '',
+      priority: form.priority,
+    };
 
     if (props.type === 'task') {
-      newItem = createItem({
-        type: 'task',
-        title: form.title || '未命名任务',
-        content: form.content || '',
-        deadline: form.deadline,
-        priority: form.priority,
-        status: 'todo',
-        tags: [],
-      });
-    } else if (props.type === 'note') {
-      newItem = createItem({
-        type: 'note',
-        title: form.title || '未命名笔记',
-        content: form.content || '',
-        priority: form.priority,
-        status: 'done',
-        tags: [],
-      });
+      formData.deadline = deadlineStr || undefined;
     }
 
     // 关闭弹窗
     emit('update:modelValue', false);
 
-    // 返回新建的 item 给父组件
-    emit('confirm', newItem);
+    // 返回表单数据给父组件
+    emit('confirm', formData);
   });
 };
 </script>

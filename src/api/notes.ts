@@ -1,19 +1,6 @@
 // src/api/notes.ts
 import api from './index';
 
-interface Note {
-  id: number;
-  type: string;
-  title: string;
-  content: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'todo' | 'doing' | 'done';
-  isPinned: boolean;
-  tags: Array<{ id: number; name: string; color: string }>;
-  created_at: string;
-  updated_at: string;
-}
-
 interface NoteCreateData {
   title?: string;
   content?: string;
@@ -30,6 +17,19 @@ interface NoteUpdateData {
   status?: 'todo' | 'doing' | 'done';
   tags?: number[];
   isPinned?: boolean;
+}
+
+interface Note {
+  id: number;
+  type: string;
+  title: string;
+  content: string;
+  priority: 'low' | 'medium' | 'high';
+  status: 'todo' | 'doing' | 'done';
+  isPinned: boolean;
+  tags: { id: number; name: string; color?: string }[];
+  created_at: string;
+  updated_at: string;
 }
 
 const notesApi = {
@@ -76,7 +76,18 @@ const notesApi = {
 
   // 更新笔记标签
   updateNoteTags: (id: number, tags: number[]): Promise<Note> => {
-    return api.patch(`/notes/${id}/tags`, { tags });
+    console.log(`[API] 更新笔记标签: note_id=${id}, tags=`, tags);
+    return api
+      .patch(`/notes/${id}/tags`, { tags })
+      .then((response) => {
+        console.log(`[API] 更新笔记标签成功:`, response);
+        return response.data;
+      })
+      .catch((error) => {
+        console.error(`[API] 更新笔记标签失败:`, error);
+        console.error(`[API] 错误详情:`, error.response?.data || error.message);
+        throw error;
+      });
   },
 
   // 批量删除

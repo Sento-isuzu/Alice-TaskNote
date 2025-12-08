@@ -4,14 +4,20 @@
       <h2 class="text-2xl font-semibold">TODOs</h2>
       <div class="flex items-center space-x-2">
         <el-input
-          placeholder="搜索..."
+          placeholder="搜索任务..."
           :prefix-icon="Search"
           class="w-60"
           v-model="searchQuery"
           @keyup.enter="handleSearch"
         />
-        <el-button :icon="Filter">过滤</el-button>
-        <el-button :icon="Plus" @click="showInput = !showInput">添加</el-button>
+        <el-button
+          :icon="Filter"
+          @click="toggleFilter"
+          :type="isReverseFilter ? 'primary' : 'default'"
+        >
+          过滤
+        </el-button>
+        <el-button :icon="Plus" type="primary" @click="showInput = !showInput">添加</el-button>
       </div>
     </header>
     <transition name="slide-fade">
@@ -72,12 +78,12 @@
     v-if="currentEditingItem"
     v-model="isTagsDialogOpen"
     :item="currentEditingItem"
-    @confirm="handleUpdateTask"
+    @confirm-tags="handleUpdateTags"
   />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onActivated, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { fetchTasks, createTask, updateTask, deleteTask, searchTasks } from '@/api/task';
 import ItemCard from '@/components/ItemCard.vue';
@@ -85,7 +91,8 @@ import CreateItemDialog from '@/components/CreateItemDialog.vue';
 import { Search, Filter, Plus } from '@element-plus/icons-vue';
 import EditTaskDialog from '@/components/EditTaskDialog.vue';
 import ManageTagsDialog from '@/components/ManageTagsDialog.vue';
-import { type Item } from '@/types';
+import { type Item, type Tag } from '@/types';
+import { el } from 'element-plus/es/locale';
 
 const tasks = ref<Item[]>([]);
 const searchQuery = ref('');
@@ -95,46 +102,130 @@ const isEditDialogOpen = ref(false);
 const isTagsDialogOpen = ref(false);
 const currentEditingItem = ref<Item | null>(null);
 const showInput = ref(false);
+const isReverseFilter = ref(false);
+const selectedPriority = ref<string | null>(null);
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+const SEARCH_DEBOUNCE_MS = 300;
+
+onActivated(() => {
+  loadTasks();
+});
 
 const loadTasks = async (query?: string) => {
   try {
     let res;
-    if (query) {
+    if (query && !isReverseFilter.value) {
+      // 正向搜索时，向后端发送搜索请求
       res = await searchTasks(query);
     } else {
+      // 反向搜索或没有搜索词时，获取所有任务，在前端过滤
       res = await fetchTasks();
     }
-    tasks.value = res as Item[];
+
+    console.log('加载的任务数据:', res);
+    if (res.length > 0) {
+      console.log('第一个任务的标签:', res[0].tags);
+      console.log('标签类型:', typeof res[0].tags);
+    }
+
+    tasks.value = (res as Item[]).map((item) => ({
+      ...item,
+      tags: item.tags || [],
+    }));
   } catch (error) {
     ElMessage.error('加载任务失败，请刷新重试');
-    console.error('加载任务错误：', error);
   }
 };
-// 页面挂载时加载任务
-onMounted(() => loadTasks());
 
-const pendingTasks = computed(() =>
-  tasks.value
-    .filter((t) => t.status !== 'done')
-    .sort((a, b) => Number(b.isPinned) - Number(a.isPinned))
-);
-const completedTasks = computed(() =>
-  tasks.value
-    .filter((t) => t.status === 'done')
-    .sort((a, b) => Number(b.isPinned) - Number(a.isPinned))
-);
+const priorityWeight = {
+  high: 4,
+  medium: 3,
+  low: 2,
+  none: 1,
+};
+
+//排序函数 - 优先按置顶，然后按优先级，最后按更新时间
+const sortTasks = (tasks: Item[]) => {
+  return [...tasks].sort((a, b) => {
+    // 1. 先按置顶排序（置顶的在前）
+    if (a.isPinned !== b.isPinned) {
+      return b.isPinned ? 1 : -1;
+    }
+
+    // 2. 按优先级权重排序（权重高的在前）
+    const aPriorityWeight = priorityWeight[a.priority as keyof typeof priorityWeight] || 1;
+    const bPriorityWeight = priorityWeight[b.priority as keyof typeof priorityWeight] || 1;
+    if (aPriorityWeight !== bPriorityWeight) {
+      return bPriorityWeight - aPriorityWeight;
+    }
+
+    // 3. 按更新时间排序（最新的在前）
+    const aTime = new Date(a.updatedAt || a.updated_at || a.createdAt || a.created_at).getTime();
+    const bTime = new Date(b.updatedAt || b.updated_at || b.createdAt || b.created_at).getTime();
+    return bTime - aTime;
+  });
+};
+
+//搜索和优先级筛选，以及反向过滤逻辑
+const filteredTasks = computed(() => {
+  let filtered = tasks.value;
+
+  // 优先级筛选
+  if (selectedPriority.value) {
+    filtered = filtered.filter((task) => task.priority === selectedPriority.value);
+  }
+
+  // 搜索筛选
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim();
+
+    if (isReverseFilter.value) {
+      // 反向过滤：只显示不包含搜索关键词的卡片
+      filtered = filtered.filter(
+        (task) =>
+          !task.title.toLowerCase().includes(query) &&
+          !task.content.toLowerCase().includes(query) &&
+          !(task.tags && task.tags.some((tag) => tag.name.toLowerCase().includes(query)))
+      );
+    } else {
+      // 正向过滤：正常搜索，显示包含搜索关键词的卡片
+      filtered = filtered.filter(
+        (task) =>
+          task.title.toLowerCase().includes(query) ||
+          task.content.toLowerCase().includes(query) ||
+          (task.tags && task.tags.some((tag) => tag.name.toLowerCase().includes(query)))
+      );
+    }
+  }
+
+  return filtered;
+});
+
+//应用排序和筛选
+const pendingTasks = computed(() => {
+  const pending = filteredTasks.value.filter((t) => t.status !== 'done');
+  return sortTasks(pending);
+});
+
+const completedTasks = computed(() => {
+  const completed = filteredTasks.value.filter((t) => t.status === 'done');
+  return sortTasks(completed);
+});
+
+//带筛选的统计
+const filteredPendingTasks = computed(() => pendingTasks.value);
+const filteredCompletedTasks = computed(() => completedTasks.value);
 
 const handleQuickCreate = async () => {
   if (!newTaskTitle.value.trim()) return;
   try {
-    // 调用后端创建任务接口
     await createTask({
       type: 'task',
       title: newTaskTitle.value,
       content: '',
       status: 'todo',
       priority: 'none',
-      tags: [], // 对齐后端 tags 字段（空数组避免 undefined）
+      tags: [],
     });
     newTaskTitle.value = '';
     ElMessage.success('快速创建成功');
@@ -149,25 +240,21 @@ const handleCreateTask = async (data: {
   title: string;
   content: string;
   deadline: string;
-  priority: 'high' | 'medium' | 'low';
+  priority: 'high' | 'medium' | 'low' | 'none';
 }) => {
   try {
-    const utcDeadline = data.deadline
-      ? new Date(data.deadline + 'T00:00:00').toISOString()
-      : undefined;
-
     await createTask({
       type: 'task',
       title: data.title,
       content: data.content,
       status: 'todo',
-      deadline: utcDeadline || undefined,
+      deadline: data.deadline || undefined,
       priority: data.priority,
       tags: [],
     });
     ElMessage.success('任务创建成功');
     dialogVisible.value = false;
-    loadTasks(); // 刷新任务列表
+    loadTasks();
   } catch (error) {
     ElMessage.error('创建任务失败，请重试');
     console.error('详细创建任务错误：', error);
@@ -201,7 +288,6 @@ const handleTogglePin = async (item: Item) => {
 
     await updateTask(item.id, { isPinned: newPinState });
     ElMessage.success(newPinState ? '已置顶' : '已取消置顶');
-    // loadTasks(); // 可选：刷新列表以确保排序正确
   } catch (error) {
     const task = tasks.value.find((t) => t.id === item.id);
     if (task) task.isPinned = !newPinState; // 回滚
@@ -218,17 +304,16 @@ const handleUpdatePriority = async (id: number, priority: 'high' | 'medium' | 'l
     ElMessage.success('优先级已更新');
   } catch (error) {
     ElMessage.error('优先级更新失败');
-    loadTasks(); // 失败则刷新回原状
+    loadTasks();
   }
 };
 
-// 👇 替换：删除任务（对接后端接口）
+// 删除任务（对接后端接口）
 const handleDeleteTask = async (id: number) => {
   try {
-    // 调用后端删除任务接口
     await deleteTask(id);
     ElMessage.success('删除成功');
-    loadTasks(); // 刷新任务列表
+    loadTasks();
   } catch (error) {
     ElMessage.error('删除失败，请重试');
     console.error('删除任务错误：', error);
@@ -247,43 +332,95 @@ const handleOpenDialog = (command: 'edit' | 'setTags' | 'setDate', item: Item) =
 const handleUpdateTask = async (updatedData: Partial<Item>) => {
   if (!currentEditingItem.value) return;
 
-  const mergedData: Partial<Item> = { ...updatedData };
+  const payload: any = {};
 
-  // 标签合并（保持你的逻辑）
-  if (updatedData.tags) {
-    const oldTags = currentEditingItem.value.tags || [];
-    const newTags = updatedData.tags || [];
-    mergedData.tags = Array.from(new Set([...oldTags, ...newTags]));
-  }
+  // 处理其他字段
+  if (updatedData.title !== undefined) payload.title = updatedData.title;
+  if (updatedData.content !== undefined) payload.content = updatedData.content;
+  if (updatedData.deadline !== undefined) payload.deadline = updatedData.deadline;
+  if (updatedData.priority !== undefined) payload.priority = updatedData.priority;
+  if (updatedData.status !== undefined) payload.status = updatedData.status;
+
+  console.log('编辑任务，提交给后端的payload:', payload);
 
   try {
-    await updateTask(currentEditingItem.value.id, mergedData);
+    await updateTask(currentEditingItem.value.id, payload);
     ElMessage.success('任务更新成功');
-
     isEditDialogOpen.value = false;
-    isTagsDialogOpen.value = false;
     currentEditingItem.value = null;
-
     loadTasks();
   } catch (error) {
-    ElMessage.error('更新任务失败，请重试');
-    console.error(error);
+    ElMessage.error('更新失败，请重试');
+    console.error('更新任务错误:', error);
   }
 };
 
 const handleSearch = () => {
   const query = searchQuery.value.trim();
-  loadTasks(query);
-};
-
-onMounted(() => loadTasks());
-
-const resetSearch = () => {
-  if (searchQuery.value) {
-    searchQuery.value = '';
+  if (query) {
+    // 如果启用了反向过滤，不要向后端发送搜索请求
+    if (isReverseFilter.value) {
+      loadTasks();
+    } else {
+      loadTasks(query);
+    }
+  } else {
+    isReverseFilter.value = false;
     loadTasks();
   }
 };
+
+// 监听搜索框变化，实现自动搜索
+watch(searchQuery, (newValue) => {
+  if (searchTimer) {
+    clearTimeout(searchTimer);
+  }
+
+  searchTimer = setTimeout(() => {
+    handleSearch();
+  }, SEARCH_DEBOUNCE_MS);
+});
+
+const toggleFilter = () => {
+  if (searchQuery.value.trim()) {
+    // 有搜索词时，切换反向过滤状态
+    isReverseFilter.value = !isReverseFilter.value;
+
+    if (isReverseFilter.value) {
+      loadTasks();
+    } else {
+      loadTasks(searchQuery.value.trim());
+    }
+  } else {
+    ElMessage.warning('请先在搜索框中输入关键词');
+  }
+};
+
+const handleUpdateTags = async (tags: Tag[]) => {
+  if (!currentEditingItem.value) {
+    console.error('没有当前编辑的任务！');
+    return;
+  }
+
+  try {
+    // 提取标签 ID 数组
+    const tagIds = tags.map((tag) => tag.id).filter((id) => id !== null && id !== undefined);
+
+    console.log('更新标签，标签ID数组:', tagIds);
+
+    await updateTask(currentEditingItem.value.id, {
+      tags: tagIds,
+    });
+
+    isTagsDialogOpen.value = false;
+    loadTasks();
+  } catch (error) {
+    ElMessage.error('标签更新失败');
+    console.error('更新标签错误:', error);
+  }
+};
+
+onMounted(() => loadTasks());
 </script>
 
 <style scoped>
@@ -291,7 +428,16 @@ const resetSearch = () => {
   transition: all 0.25s ease;
 }
 .slide-fade-enter-from,
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
 .mt-big {
   margin-top: 32px;
+}
+:deep(.el-button:focus),
+:deep(.el-button:focus-visible) {
+  outline: none;
+  box-shadow: none;
 }
 </style>

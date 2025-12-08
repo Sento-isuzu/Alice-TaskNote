@@ -15,12 +15,14 @@
     <!-- 任务标签部分 -->
     <div class="mb-8">
       <h3 class="text-lg font-semibold text-gray-700 mb-3">任务标签</h3>
+      <span class="text-sm text-gray-500">共 {{ filteredTaskTags.length }} 个</span>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         <TagCard
           v-for="tag in filteredTaskTags"
           :key="'task-' + tag.name"
           :tag="tag"
           :type="'task'"
+          @deleted="handleTagDeleted"
         />
       </div>
       <el-empty v-if="filteredTaskTags.length === 0" description="暂无任务标签" />
@@ -31,12 +33,14 @@
     <!-- 笔记标签部分 -->
     <div>
       <h3 class="text-lg font-semibold text-gray-700 mb-3">笔记标签</h3>
+      <span class="text-sm text-gray-500">共 {{ filteredNoteTags.length }} 个</span>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         <TagCard
           v-for="tag in filteredNoteTags"
           :key="'note-' + tag.name"
           :tag="tag"
           :type="'note'"
+          @deleted="handleTagDeleted"
         />
       </div>
       <el-empty v-if="filteredNoteTags.length === 0" description="暂无笔记标签" />
@@ -45,54 +49,86 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { getItems } from '@/store/mockData';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Search } from '@element-plus/icons-vue';
 import TagCard from '@/components/TagCard.vue';
+import { fetchTags, type TagCount } from '@/api/tag';
 
-const tasks = getItems('task');
-const notes = getItems('note');
+let searchTimer: any = null;
+const DEBOUNCE_TIME = 300;
 
+const allTags = ref<TagCount[]>([]);
 // 搜索查询
 const searchQuery = ref('');
 
-// 统计任务标签数量
+const loadTags = async (query?: string) => {
+  try {
+    const tags = await fetchTags(query);
+    console.log('加载的标签数据:', tags); // 调试用
+    allTags.value = tags;
+  } catch (error) {
+    console.error('加载标签失败:', error);
+  }
+};
+
+onMounted(() => loadTags());
+// 统计任务标签数量 - 只显示有任务关联的标签
 const taskTags = computed(() => {
-  const tagCount: Record<string, number> = {};
-
-  tasks.value.forEach((task) => {
-    task.tags.forEach((tag) => {
-      tagCount[tag] = (tagCount[tag] || 0) + 1;
-    });
-  });
-
-  return Object.entries(tagCount).map(([name, count]) => ({ name, count }));
+  return allTags.value
+    .filter((tag) => (tag.task_count || 0) > 0)
+    .map((tag) => ({
+      ...tag,
+      task_count: tag.task_count || 0,
+      name: tag.name || '',
+      color: tag.color || '#909399',
+    }));
 });
-
-// 统计笔记标签数量
+// 统计笔记标签数量 - 只显示有笔记关联的标签
 const noteTags = computed(() => {
-  const tagCount: Record<string, number> = {};
-
-  notes.value.forEach((note) => {
-    note.tags.forEach((tag) => {
-      tagCount[tag] = (tagCount[tag] || 0) + 1;
-    });
-  });
-
-  return Object.entries(tagCount).map(([name, count]) => ({ name, count }));
+  return allTags.value
+    .filter((tag) => (tag.note_count || 0) > 0)
+    .map((tag) => ({
+      ...tag,
+      note_count: tag.note_count || 0,
+      name: tag.name || '',
+      color: tag.color || '#909399',
+    }));
 });
 
 // 过滤后的标签
 const filteredTaskTags = computed(() => {
-  if (!searchQuery.value) return taskTags.value;
-  const query = searchQuery.value.toLowerCase();
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return taskTags.value;
+
   return taskTags.value.filter((tag) => tag.name.toLowerCase().includes(query));
 });
 
 const filteredNoteTags = computed(() => {
-  if (!searchQuery.value) return noteTags.value;
-  const query = searchQuery.value.toLowerCase();
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return noteTags.value;
+
   return noteTags.value.filter((tag) => tag.name.toLowerCase().includes(query));
+});
+
+const handleTagDeleted = () => {
+  // 重新加载标签数据
+  loadTags(searchQuery.value.trim() || undefined);
+};
+
+onMounted(() => {
+  loadTags();
+});
+
+watch(searchQuery, (newQuery) => {
+  if (searchTimer !== null) {
+    clearTimeout(searchTimer);
+  }
+
+  const queryStr = newQuery ? newQuery.trim() : '';
+
+  searchTimer = setTimeout(() => {
+    loadTags(queryStr);
+  }, DEBOUNCE_TIME);
 });
 </script>
 
