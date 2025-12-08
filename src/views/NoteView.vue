@@ -6,7 +6,7 @@
         <div class="flex items-center space-x-2">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索标题、内容或标签..."
+            placeholder="搜索笔记..."
             :prefix-icon="Search"
             class="w-60"
             @input="handleSearch"

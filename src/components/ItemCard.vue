@@ -111,7 +111,7 @@
                     <el-icon><Flag /></el-icon> 低 (P3)
                   </el-dropdown-item>
                   <el-dropdown-item @click.stop="setPriority('none')">
-                    <el-icon><Flag /></el-icon> 无
+                    <el-icon><Flag /></el-icon> 无 (p4)
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -129,6 +129,8 @@
               </span>
             </el-dropdown-item>
           </template>
+
+          <!-- task -->
           <template v-else>
             <el-dropdown-item command="edit">
               <el-icon><Edit /></el-icon> 编辑
@@ -194,9 +196,6 @@ import {
   MoreFilled,
   Delete,
   Edit,
-  Unlock,
-  Warning,
-  Scissor,
   Operation,
   Top,
   Lock,

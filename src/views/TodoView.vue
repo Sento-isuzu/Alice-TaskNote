@@ -4,7 +4,7 @@
       <h2 class="text-2xl font-semibold">TODOs</h2>
       <div class="flex items-center space-x-2">
         <el-input
-          placeholder="搜索..."
+          placeholder="搜索任务..."
           :prefix-icon="Search"
           class="w-60"
           v-model="searchQuery"
@@ -17,7 +17,7 @@
         >
           过滤
         </el-button>
-        <el-button :icon="Plus" @click="showInput = !showInput">添加</el-button>
+        <el-button :icon="Plus" type="primary" @click="showInput = !showInput">添加</el-button>
       </div>
     </header>
     <transition name="slide-fade">
@@ -92,6 +92,7 @@ import { Search, Filter, Plus } from '@element-plus/icons-vue';
 import EditTaskDialog from '@/components/EditTaskDialog.vue';
 import ManageTagsDialog from '@/components/ManageTagsDialog.vue';
 import { type Item, type Tag } from '@/types';
+import { el } from 'element-plus/es/locale';
 
 const tasks = ref<Item[]>([]);
 const searchQuery = ref('');
@@ -320,7 +321,6 @@ const handleDeleteTask = async (id: number) => {
 };
 
 const handleOpenDialog = (command: 'edit' | 'setTags' | 'setDate', item: Item) => {
-  console.log(`打开对话框: ${command}, 任务ID: ${item.id}`);
   currentEditingItem.value = item;
   if (command === 'edit' || command === 'setDate') {
     isEditDialogOpen.value = true;
@@ -412,7 +412,6 @@ const handleUpdateTags = async (tags: Tag[]) => {
       tags: tagIds,
     });
 
-    ElMessage.success('标签更新成功');
     isTagsDialogOpen.value = false;
     loadTasks();
   } catch (error) {
@@ -435,5 +434,10 @@ onMounted(() => loadTasks());
 }
 .mt-big {
   margin-top: 32px;
+}
+:deep(.el-button:focus),
+:deep(.el-button:focus-visible) {
+  outline: none;
+  box-shadow: none;
 }
 </style>
