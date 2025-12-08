@@ -239,7 +239,7 @@ const handleCreateTask = async (data: {
   title: string;
   content: string;
   deadline: string;
-  priority: 'high' | 'medium' | 'low';
+  priority: 'high' | 'medium' | 'low' | 'none';
 }) => {
   try {
     await createTask({

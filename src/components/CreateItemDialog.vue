@@ -28,6 +28,7 @@
             <el-radio-button label="high">高</el-radio-button>
             <el-radio-button label="medium">中</el-radio-button>
             <el-radio-button label="low">低</el-radio-button>
+            <el-radio-button label="none">无</el-radio-button>
           </el-radio-group>
         </el-form-item>
       </template>
@@ -77,7 +78,6 @@ const formRef = ref<FormInstance>();
 const form = reactive({
   title: '',
   content: '',
-  // 关键修改点：将 deadline 的类型明确定义为 string 或 Date 或 null/undefined
   deadline: '' as Date | string | null,
   priority: 'medium' as 'high' | 'medium' | 'low' | 'none',
 });
@@ -95,7 +95,7 @@ watch(
       form.title = '';
       form.content = '';
       form.deadline = '';
-      form.priority = 'medium';
+      form.priority = 'none';
     }
   }
 );
