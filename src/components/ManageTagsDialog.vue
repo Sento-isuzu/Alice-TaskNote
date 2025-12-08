@@ -61,7 +61,6 @@ watch(
   () => props.item,
   (newItem) => {
     if (newItem && newItem.tags) {
-      // 确保标签格式正确，有 id 和 name
       currentTagObjects.value = newItem.tags.map((tag) => ({
         id: tag.id || 0,
         name: tag.name || '',
@@ -94,7 +93,6 @@ const handleInputConfirm = async () => {
     );
 
     if (!existingTag) {
-      // 创建新标签对象（临时，没有ID）
       const newTag: Tag = {
         id: null,
         name: newTagName,
@@ -116,7 +114,6 @@ const handleConfirm = async () => {
     const finalTagObjects: Tag[] = [];
 
     for (const tag of currentTagObjects.value) {
-      // 如果标签已经有ID，直接使用
       if (tag.id !== null && tag.id > 0) {
         const existingTag = existingTags.find((t) => t.id === tag.id);
         if (existingTag) {

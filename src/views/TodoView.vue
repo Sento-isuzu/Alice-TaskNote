@@ -101,7 +101,6 @@ const isEditDialogOpen = ref(false);
 const isTagsDialogOpen = ref(false);
 const currentEditingItem = ref<Item | null>(null);
 const showInput = ref(false);
-// 反向过滤状态：true表示过滤掉包含搜索关键词的卡片，false表示正常搜索（显示包含关键词的卡片）
 const isReverseFilter = ref(false);
 const selectedPriority = ref<string | null>(null);
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -128,7 +127,6 @@ const loadTasks = async (query?: string) => {
       console.log('标签类型:', typeof res[0].tags);
     }
 
-    // 确保任务的tags属性被正确初始化
     tasks.value = (res as Item[]).map((item) => ({
       ...item,
       tags: item.tags || [],
@@ -145,7 +143,7 @@ const priorityWeight = {
   none: 1,
 };
 
-// 修改：排序函数 - 优先按置顶，然后按优先级，最后按更新时间
+//排序函数 - 优先按置顶，然后按优先级，最后按更新时间
 const sortTasks = (tasks: Item[]) => {
   return [...tasks].sort((a, b) => {
     // 1. 先按置顶排序（置顶的在前）
@@ -167,7 +165,7 @@ const sortTasks = (tasks: Item[]) => {
   });
 };
 
-// 修改：添加搜索和优先级筛选，以及反向过滤逻辑
+//搜索和优先级筛选，以及反向过滤逻辑
 const filteredTasks = computed(() => {
   let filtered = tasks.value;
 
@@ -202,7 +200,7 @@ const filteredTasks = computed(() => {
   return filtered;
 });
 
-// 修改：应用排序和筛选
+//应用排序和筛选
 const pendingTasks = computed(() => {
   const pending = filteredTasks.value.filter((t) => t.status !== 'done');
   return sortTasks(pending);
@@ -213,21 +211,20 @@ const completedTasks = computed(() => {
   return sortTasks(completed);
 });
 
-// 新增：带筛选的统计
+//带筛选的统计
 const filteredPendingTasks = computed(() => pendingTasks.value);
 const filteredCompletedTasks = computed(() => completedTasks.value);
 
 const handleQuickCreate = async () => {
   if (!newTaskTitle.value.trim()) return;
   try {
-    // 调用后端创建任务接口
     await createTask({
       type: 'task',
       title: newTaskTitle.value,
       content: '',
       status: 'todo',
       priority: 'none',
-      tags: [], // 对齐后端 tags 字段（空数组避免 undefined）
+      tags: [],
     });
     newTaskTitle.value = '';
     ElMessage.success('快速创建成功');
@@ -250,7 +247,6 @@ const handleCreateTask = async (data: {
       title: data.title,
       content: data.content,
       status: 'todo',
-      // 直接传 '2023-12-05' 给后端
       deadline: data.deadline || undefined,
       priority: data.priority,
       tags: [],
@@ -291,7 +287,6 @@ const handleTogglePin = async (item: Item) => {
 
     await updateTask(item.id, { isPinned: newPinState });
     ElMessage.success(newPinState ? '已置顶' : '已取消置顶');
-    // loadTasks(); // 可选：刷新列表以确保排序正确
   } catch (error) {
     const task = tasks.value.find((t) => t.id === item.id);
     if (task) task.isPinned = !newPinState; // 回滚
@@ -308,17 +303,16 @@ const handleUpdatePriority = async (id: number, priority: 'high' | 'medium' | 'l
     ElMessage.success('优先级已更新');
   } catch (error) {
     ElMessage.error('优先级更新失败');
-    loadTasks(); // 失败则刷新回原状
+    loadTasks();
   }
 };
 
-// 👇 替换：删除任务（对接后端接口）
+// 删除任务（对接后端接口）
 const handleDeleteTask = async (id: number) => {
   try {
-    // 调用后端删除任务接口
     await deleteTask(id);
     ElMessage.success('删除成功');
-    loadTasks(); // 刷新任务列表
+    loadTasks();
   } catch (error) {
     ElMessage.error('删除失败，请重试');
     console.error('删除任务错误：', error);
@@ -354,7 +348,7 @@ const handleUpdateTask = async (updatedData: Partial<Item>) => {
     ElMessage.success('任务更新成功');
     isEditDialogOpen.value = false;
     currentEditingItem.value = null;
-    loadTasks(); // 重新加载任务列表
+    loadTasks();
   } catch (error) {
     ElMessage.error('更新失败，请重试');
     console.error('更新任务错误:', error);
@@ -366,14 +360,11 @@ const handleSearch = () => {
   if (query) {
     // 如果启用了反向过滤，不要向后端发送搜索请求
     if (isReverseFilter.value) {
-      // 反向过滤在前端处理，只需刷新任务列表（获取所有任务）
       loadTasks();
     } else {
-      // 正向搜索，向后端发送搜索请求
       loadTasks(query);
     }
   } else {
-    // 搜索框为空时，重置过滤状态并加载所有任务
     isReverseFilter.value = false;
     loadTasks();
   }
@@ -395,21 +386,16 @@ const toggleFilter = () => {
     // 有搜索词时，切换反向过滤状态
     isReverseFilter.value = !isReverseFilter.value;
 
-    // 立即应用新的过滤规则
     if (isReverseFilter.value) {
-      // 切换到反向过滤：重新加载所有任务，在前端过滤
       loadTasks();
     } else {
-      // 切换到正向过滤：向后端发送搜索请求
       loadTasks(searchQuery.value.trim());
     }
   } else {
-    // 没有搜索词时，提示用户
     ElMessage.warning('请先在搜索框中输入关键词');
   }
 };
 
-// 在 TodoView.vue 中添加
 const handleUpdateTags = async (tags: Tag[]) => {
   if (!currentEditingItem.value) {
     console.error('没有当前编辑的任务！');
@@ -422,14 +408,13 @@ const handleUpdateTags = async (tags: Tag[]) => {
 
     console.log('更新标签，标签ID数组:', tagIds);
 
-    // 调用更新任务接口，只更新 tags 字段
     await updateTask(currentEditingItem.value.id, {
       tags: tagIds,
     });
 
     ElMessage.success('标签更新成功');
     isTagsDialogOpen.value = false;
-    loadTasks(); // 重新加载任务列表
+    loadTasks();
   } catch (error) {
     ElMessage.error('标签更新失败');
     console.error('更新标签错误:', error);

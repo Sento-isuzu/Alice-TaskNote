@@ -39,7 +39,7 @@ interface Tag {
 }
 
 const props = defineProps<{
-  tag: Tag; // 使用完整的Tag类型，包含id
+  tag: Tag;
   type: 'task' | 'note';
 }>();
 

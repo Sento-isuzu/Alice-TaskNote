@@ -91,7 +91,7 @@ import { Search, Plus, Close } from '@element-plus/icons-vue';
 import { marked } from 'marked';
 import notesApi from '@/api/notes';
 
-// 修正1：添加类型导入
+//添加类型导入
 interface Note {
   id: number;
   type: string;
@@ -110,7 +110,6 @@ const notes = ref<Item[]>([]);
 const loading = ref(false);
 const searchKeyword = ref('');
 
-// 修正2：使用正确的类型
 const searchTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 // 编辑器状态
@@ -125,7 +124,6 @@ const saving = ref(false);
 const isTagsDialogOpen = ref(false);
 const currentEditingNote = ref<Item | null>(null);
 
-// 修正3：添加 handleSetTags 函数
 const handleSetTags = (item: Item) => {
   currentEditingNote.value = item;
   isTagsDialogOpen.value = true;
@@ -164,9 +162,9 @@ const loadNotes = async () => {
       sort_by: 'isPinned',
       order: 'desc',
     });
-    // 使用转换函数将 Note 转换为 Item，并确保标签格式正确
+
     notes.value = response.map(convertNoteToItem);
-    console.log('加载的笔记数据:', notes.value); // 调试用
+    console.log('加载的笔记数据:', notes.value);
   } catch (error) {
     console.error('加载笔记失败:', error);
     ElMessage.error('加载笔记失败，请重试');
@@ -362,17 +360,15 @@ const handleUpdateNoteTags = async (tags: Tag[]) => {
   }
 };
 
-// 更新优先级 - 修正4：处理类型转换
+// 更新优先级
 const handleUpdatePriority = async (id: number, priority: string) => {
   try {
-    // 确保 priority 是合法的类型
     const validPriorities = ['high', 'medium', 'low'] as const;
     let priorityValue: 'high' | 'medium' | 'low';
 
     if (validPriorities.includes(priority as any)) {
       priorityValue = priority as 'high' | 'medium' | 'low';
     } else {
-      // 如果 priority 是 'none' 或者其他值，转换为默认值 'medium'
       priorityValue = 'medium';
     }
 
@@ -389,7 +385,6 @@ const handleUpdatePriority = async (id: number, priority: string) => {
 // 更新状态
 const handleUpdateStatus = async (id: number, status: string) => {
   try {
-    // 确保 status 是合法的类型
     const validStatuses = ['todo', 'doing', 'done'] as const;
     const statusValue = validStatuses.includes(status as any)
       ? (status as 'todo' | 'doing' | 'done')
@@ -406,7 +401,6 @@ const handleUpdateStatus = async (id: number, status: string) => {
 };
 
 const convertNoteToItem = (note: any): Item => {
-  // 处理 priority 转换
   let priority: 'high' | 'medium' | 'low' | 'none';
   if (note.priority === 'high' || note.priority === 'medium' || note.priority === 'low') {
     priority = note.priority;
@@ -422,7 +416,6 @@ const convertNoteToItem = (note: any): Item => {
       color: tag.color || '#909399',
     }));
   } else if (note.tags) {
-    // 如果 tags 不是数组，尝试转换
     console.warn('Note tags 不是数组:', note.tags);
     tagsArray = [];
   }
@@ -435,8 +428,7 @@ const convertNoteToItem = (note: any): Item => {
     priority: priority,
     status: (note.status || 'done') as 'todo' | 'doing' | 'done' | string,
     isPinned: note.isPinned || false,
-    tags: tagsArray, // 使用处理后的标签数组
-    // 确保两个版本的字段都有值
+    tags: tagsArray,
     created_at: note.created_at || note.createdAt || new Date().toISOString(),
     updated_at: note.updated_at || note.updatedAt || new Date().toISOString(),
     createdAt: note.createdAt || note.created_at || new Date().toISOString(),
@@ -448,7 +440,7 @@ const handleOpenDialog = (command: 'edit' | 'setTags' | 'setDate', item: Item) =
   if (command === 'edit') {
     handleViewNote(item.id);
   } else if (command === 'setTags') {
-    handleSetTags(item); // 这里使用我们添加的 handleSetTags 函数
+    handleSetTags(item);
   }
   // 注意：笔记没有 setDate 命令，可以忽略
 };
@@ -460,7 +452,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 定义滚动条样式，让编辑器和预览区看起来更精致 */
 textarea::-webkit-scrollbar,
 .overflow-y-auto::-webkit-scrollbar {
   width: 6px;

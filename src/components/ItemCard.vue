@@ -283,12 +283,11 @@ const formatDate = (dateStr: string) => {
   if (isNaN(date.getTime())) return '无效日期';
 
   const today = new Date();
-  // 改用本地时间比较（移除 UTC 方法）
+  //本地时间比较
   const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   const isToday = targetDate.getTime() === todayDate.getTime();
-  // 用本地时间格式化
   return isToday ? '今天' : `${date.getMonth() + 1}月${date.getDate()}日`;
 };
 
@@ -311,7 +310,6 @@ const dateStatusClass = computed(() => {
 </script>
 
 <style scoped>
-/* 优先级复选框颜色 (保持不变) */
 :deep(.priority-high .el-checkbox__inner) {
   border-color: #d1453b;
 }
@@ -340,7 +338,6 @@ const dateStatusClass = computed(() => {
   border-color: #dcdfe6;
 }
 
-/* checkbox 改圆形 */
 :deep(.el-checkbox__inner) {
   border-radius: 9999px !important;
 }
@@ -349,12 +346,10 @@ const dateStatusClass = computed(() => {
   border-radius: 9999px !important;
 }
 
-/* 修复 Element Plus 默认微妙偏移 */
 :deep(.el-checkbox__input) {
   vertical-align: middle !important;
 }
 
-/* 修复 Checkbox 对齐 */
 :deep(.el-checkbox__input) {
   vertical-align: top;
 }
