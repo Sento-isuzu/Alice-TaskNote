@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col p-6 overflow-y-auto">
     <header class="h-16 bg-white rounded-lg flex items-center justify-between px-6">
-      <h2 class="text-2xl font-semibold" style="font-family: inherit; color: black">Status</h2>
+      <h2 class="text-2xl font-semibold" style="font-family: inherit; color: black">Stats</h2>
     </header>
 
     <!-- 加载状态 -->
